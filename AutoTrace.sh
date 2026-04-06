@@ -34,15 +34,36 @@ rep_time=$( date -R )
 
 Green_font_prefix="\033[32m" && Red_font_prefix="\033[31m" && Yellow_font_prefix="\033[33m" && Green_background_prefix="\033[42;37m" && Red_background_prefix="\033[41;37m" && Font_color_suffix="\033[0m"
 
+
+# ======= Nexttrace POW Provider 检测 =======
+NT_POW_ARGS=""
+nexttrace_detect_pow() {
+    local Blue="\033[34m" && local Reset="\033[0m"
+    echo -e "${Blue}[检测] 正在检测 NextTrace API 可用性...${Reset}"
+    if ${Nexttrace_file} --data-provider leomoeapi -q 1 -n -m 3 1.1.1.1 >/dev/null 2>&1; then
+        NT_POW_ARGS="--data-provider leomoeapi"
+        echo -e "${Blue}[检测] 使用默认 leomoeapi${Reset}"
+    else
+        NT_POW_ARGS="--pow-provider sakura --data-provider leomoeapi"
+        echo -e "${Blue}[检测] leomoeapi 受限，切换至 sakura 节点${Reset}"
+    fi
+}
+# ======= Nexttrace POW Provider 检测结束 =======
 # ======= 线路判断函数 =======
 judge_route() {
     local log=$1
     local title=$2
+    local no=$3
     local Blue="\033[34m" && local Yellow="\033[33m" && local Green="\033[32m" && local Reset="\033[0m"
     
-    echo -e "\n${Blue}======= ${title} 线路判断 =======${Reset}" | tee -a $log
+    echo -e "\n${Blue}>>> ${title} 线路判断 <<<${Reset}" | tee -a $log
 
-    local block=$(tac $log | awk "/^No:[0-9]+\/[0-9]+/{found=1} found{print} found && /^==/{exit}" | tac)
+    # 取该序号对应的路由段
+    local block
+    if [ -n "$no" ]; then
+        block=$(awk "BEGIN{f=0} /^${no} Traceroute/{f=1} f && /^No:[0-9]+\/[0-9]+ Traceroute/ && !/^${no} Traceroute/{f=0} f{print}" "$log")
+    fi
+    [ -z "$block" ] && block=$(tac "$log" | awk "/^No:[0-9]+\/[0-9]+/{found=1} found{print} found && /^==/{exit}" | tac)
 
     local has_5943=$(echo "$block"    | grep -c "59\.43\.")
     local has_20297=$(echo "$block"   | grep -c "202\.97\.")
@@ -491,11 +512,11 @@ NT_Ipv4_mtr_CN(){
     if [ "$2" = "tcp" ] || [ "$2" = "TCP" ]; then
         echo -e "\n$5 Traceroute to $4 (TCP Mode, Max $3 Hop, IPv4)" | tee -a $log
         echo -e "===================================================================" | tee -a $log
-        ${Nexttrace_file} --pow-provider sakura --data-provider leomoeapi -M -g cn -q 1 -n -T -m $3 $1 | tee -a $log
+        ${Nexttrace_file} ${NT_POW_ARGS} -M -g cn -q 1 -n -T -m $3 $1 | tee -a $log
     elif [ "$2" = "icmp" ] || [ "$2" = "ICMP" ]; then
         echo -e "\n$5 Tracecroute to $4 (ICMP Mode, Max $3 Hop, IPv4)" | tee -a $log
         echo -e "===================================================================" | tee -a $log
-        ${Nexttrace_file} --pow-provider sakura --data-provider leomoeapi -M -g cn -q 1 -n -m $3 $1 | tee -a $log
+        ${Nexttrace_file} ${NT_POW_ARGS} -M -g cn -q 1 -n -m $3 $1 | tee -a $log
     else
         echo -e "${Error} 参数错误，请输入 TCP 或 ICMP" && exit 1
     fi   
@@ -515,18 +536,28 @@ NT_IPv4_IP_CN_Mtr(){
     IPv4_IP
     #载入Nexttrace参数
     Nexttrace_Mode
+    #检测 POW 节点
+    nexttrace_detect_pow
     #开始测试IPv4库回程路由，第5个块是表示节点序号的，增删节点都要修改
     clear    
  	NT_Ipv4_mtr_CN "${IPv4_1}" "${Net_Mode}" "${Hop_Mode}" "${IPv4_1_name}" "No:1/9"
+    judge_route "$log" "${IPv4_1_name}" "No:1/9"
     NT_Ipv4_mtr_CN "${IPv4_2}" "${Net_Mode}" "${Hop_Mode}" "${IPv4_2_name}" "No:2/9"
+    judge_route "$log" "${IPv4_2_name}" "No:2/9"
     NT_Ipv4_mtr_CN "${IPv4_3}" "${Net_Mode}" "${Hop_Mode}" "${IPv4_3_name}" "No:3/9"
+    judge_route "$log" "${IPv4_3_name}" "No:3/9"
     NT_Ipv4_mtr_CN "${IPv4_4}" "${Net_Mode}" "${Hop_Mode}" "${IPv4_4_name}" "No:4/9"
+    judge_route "$log" "${IPv4_4_name}" "No:4/9"
     NT_Ipv4_mtr_CN "${IPv4_5}" "${Net_Mode}" "${Hop_Mode}" "${IPv4_5_name}" "No:5/9"
+    judge_route "$log" "${IPv4_5_name}" "No:5/9"
     NT_Ipv4_mtr_CN "${IPv4_6}" "${Net_Mode}" "${Hop_Mode}" "${IPv4_6_name}" "No:6/9"
+    judge_route "$log" "${IPv4_6_name}" "No:6/9"
     NT_Ipv4_mtr_CN "${IPv4_7}" "${Net_Mode}" "${Hop_Mode}" "${IPv4_7_name}" "No:7/9"
+    judge_route "$log" "${IPv4_7_name}" "No:7/9"
     NT_Ipv4_mtr_CN "${IPv4_8}" "${Net_Mode}" "${Hop_Mode}" "${IPv4_8_name}" "No:8/9"
+    judge_route "$log" "${IPv4_8_name}" "No:8/9"
     NT_Ipv4_mtr_CN "${IPv4_9}" "${Net_Mode}" "${Hop_Mode}" "${IPv4_9_name}" "No:9/9"
-    judge_route "$log" "三网回程路由 IPv4"
+    judge_route "$log" "${IPv4_9_name}" "No:9/9"
     #保留IPv4回程路由日志
     echo -e "${Info} 回程路由路径已保存在${Green_font_prefix} ${log} ${Font_color_suffix}中，如不需要请自行删除 !" 	
     #删除Nexttrace执行文件
@@ -538,11 +569,11 @@ NT_Ipv4_mtr_EN(){
     if [ "$2" = "tcp" ] || [ "$2" = "TCP" ]; then
         echo -e "\n$5 Traceroute to $4 (TCP Mode, Max $3 Hop, IPv4)" | tee -a $log
         echo -e "===================================================================" | tee -a $log
-        ${Nexttrace_file} --pow-provider sakura --data-provider leomoeapi -M -g en -q 1 -n -T -m $3 $1 | tee -a $log
+        ${Nexttrace_file} ${NT_POW_ARGS} -M -g en -q 1 -n -T -m $3 $1 | tee -a $log
     elif [ "$2" = "icmp" ] || [ "$2" = "ICMP" ]; then
         echo -e "\n$5 Tracecroute to $4 (ICMP Mode, Max $3 Hop, IPv4)" | tee -a $log
         echo -e "===================================================================" | tee -a $log
-        ${Nexttrace_file} --pow-provider sakura --data-provider leomoeapi -M -g en -q 1 -n -m $3 $1 | tee -a $log
+        ${Nexttrace_file} ${NT_POW_ARGS} -M -g en -q 1 -n -m $3 $1 | tee -a $log
     else
         echo -e "${Error} 参数错误，请输入 TCP 或 ICMP" && exit 1
     fi   
@@ -562,6 +593,8 @@ NT_IPv4_IP_EN_Mtr(){
     IPv4_IP
     #载入Nexttrace参数
     Nexttrace_Mode
+    #检测 POW 节点
+    nexttrace_detect_pow
     #开始测试IPv4库回程路由，第5个块是表示节点序号的，增删节点都要修改
     clear    
  	NT_Ipv4_mtr_EN "${IPv4_1}" "${Net_Mode}" "${Hop_Mode}" "${IPv4_1_name}" "No:1/9"
@@ -615,11 +648,11 @@ NT_Ipv6_mtr_CN(){
     if [ "$2" = "tcp" ] || [ "$2" = "TCP" ]; then
         echo -e "\n$5 Traceroute to $4 (TCP Mode, Max $3 Hop, IPv6)" | tee -a $log
         echo -e "===================================================================" | tee -a $log
-        ${Nexttrace_file} --pow-provider sakura --data-provider leomoeapi -M -g cn -q 1 -n -T -m $3 $1 | tee -a $log
+        ${Nexttrace_file} ${NT_POW_ARGS} -M -g cn -q 1 -n -T -m $3 $1 | tee -a $log
     elif [ "$2" = "icmp" ] || [ "$2" = "ICMP" ]; then
         echo -e "\n$5 Tracecroute to $4 (ICMP Mode, Max $3 Hop, IPv6)" | tee -a $log
         echo -e "===================================================================" | tee -a $log
-        ${Nexttrace_file} --pow-provider sakura --data-provider leomoeapi -M -g cn -q 1 -n -m $3 $1 | tee -a $log
+        ${Nexttrace_file} ${NT_POW_ARGS} -M -g cn -q 1 -n -m $3 $1 | tee -a $log
     else
         echo -e "${Error} 参数错误，请输入 TCP 或 ICMP" && exit 1
     fi   
@@ -639,6 +672,8 @@ NT_IPv6_IP_CN_Mtr(){
     IPv6_IP
     #载入Nexttrace参数
     Nexttrace_Mode
+    #检测 POW 节点
+    nexttrace_detect_pow
     #开始测试IPv6库回程路由，第5个块是表示节点序号的，增删节点都要修改
     clear    
  	NT_Ipv6_mtr_CN "${IPv6_1}" "${Net_Mode}" "${Hop_Mode}" "${IPv6_1_name}" "No:1/9"
@@ -661,11 +696,11 @@ NT_Ipv6_mtr_EN(){
     if [ "$2" = "tcp" ] || [ "$2" = "TCP" ]; then
         echo -e "\n$5 Traceroute to $4 (TCP Mode, Max $3 Hop, IPv6)" | tee -a $log
         echo -e "===================================================================" | tee -a $log
-        ${Nexttrace_file} --pow-provider sakura --data-provider leomoeapi -M -g en -q 1 -n -T -m $3 $1 | tee -a $log
+        ${Nexttrace_file} ${NT_POW_ARGS} -M -g en -q 1 -n -T -m $3 $1 | tee -a $log
     elif [ "$2" = "icmp" ] || [ "$2" = "ICMP" ]; then
         echo -e "\n$5 Tracecroute to $4 (ICMP Mode, Max $3 Hop, IPv6)" | tee -a $log
         echo -e "===================================================================" | tee -a $log
-        ${Nexttrace_file} --pow-provider sakura --data-provider leomoeapi -M -g en -q 1 -n -m $3 $1 | tee -a $log
+        ${Nexttrace_file} ${NT_POW_ARGS} -M -g en -q 1 -n -m $3 $1 | tee -a $log
     else
         echo -e "${Error} 参数错误，请输入 TCP 或 ICMP" && exit 1
     fi     
@@ -685,6 +720,8 @@ NT_IPv6_IP_EN_Mtr(){
     IPv6_IP
     #载入Nexttrace参数
     Nexttrace_Mode
+    #检测 POW 节点
+    nexttrace_detect_pow
     #开始测试IPv6库回程路由，第5个块是表示节点序号的，增删节点都要修改
     clear  
  	NT_Ipv6_mtr_EN "${IPv6_1}" "${Net_Mode}" "${Hop_Mode}" "${IPv6_1_name}" "No:1/9"
@@ -1193,16 +1230,18 @@ NT_Specify_IPv4_CN_Mtr(){
     Nexttrace_Ver
     #载入Nexttrace参数
     Nexttrace_Mode
+    #检测 POW 节点
+    nexttrace_detect_pow
     clear
     #开始测试到指定IPv4路由  
     if [ "${Net_Mode}" = "tcp" ] || [ "${Net_Mode}" = "TCP" ]; then
         echo -e "\nTraceroute to "${Int_IPV4_IP}", Port:"${Int_IPV4_Prot}" (TCP Mode, Max "${Hop_Mode}" Hop, IPv4)" | tee -a $log
         echo -e "============================================================" | tee -a $log
-        ${Nexttrace_file} --pow-provider sakura --data-provider leomoeapi -M -g cn -q 1 -n -T -p "${Int_IPV4_Prot}" -m "${Hop_Mode}" "${Int_IPV4_IP}" | tee -a $log
+        ${Nexttrace_file} ${NT_POW_ARGS} -M -g cn -q 1 -n -T -p "${Int_IPV4_Prot}" -m "${Hop_Mode}" "${Int_IPV4_IP}" | tee -a $log
     elif [ "$2" = "icmp" ] || [ "$2" = "ICMP" ]; then
         echo -e "\nTracecroute to "${Int_IPV4_IP}", Port:"${Int_IPV4_Prot}" (ICMP Mode, Max "${Hop_Mode}" Hop, IPv4)" | tee -a $log
         echo -e "============================================================" | tee -a $log
-        ${Nexttrace_file} --pow-provider sakura --data-provider leomoeapi -M -g cn -q 1 -n -p "${Int_IPV4_Prot}" -m "${Hop_Mode}" "${Int_IPV4_IP}" | tee -a $log
+        ${Nexttrace_file} ${NT_POW_ARGS} -M -g cn -q 1 -n -p "${Int_IPV4_Prot}" -m "${Hop_Mode}" "${Int_IPV4_IP}" | tee -a $log
     else
         echo -e "${Error} 参数错误，请输入 TCP 或 ICMP" && exit 1
     fi  
@@ -1223,16 +1262,18 @@ NT_Specify_IPv4_EN_Mtr(){
     Nexttrace_Ver
     #载入Nexttrace参数
     Nexttrace_Mode
+    #检测 POW 节点
+    nexttrace_detect_pow
     clear
     #开始测试到指定IPv4路由  
     if [ "${Net_Mode}" = "tcp" ] || [ "${Net_Mode}" = "TCP" ]; then
         echo -e "\nTraceroute to "${Int_IPV4_IP}", Port:"${Int_IPV4_Prot}" (TCP Mode, Max "${Hop_Mode}" Hop, IPv4)" | tee -a $log
         echo -e "============================================================" | tee -a $log
-        ${Nexttrace_file} --pow-provider sakura --data-provider leomoeapi -M -g en -q 1 -n -T -p "${Int_IPV4_Prot}" -m "${Hop_Mode}" "${Int_IPV4_IP}" | tee -a $log
+        ${Nexttrace_file} ${NT_POW_ARGS} -M -g en -q 1 -n -T -p "${Int_IPV4_Prot}" -m "${Hop_Mode}" "${Int_IPV4_IP}" | tee -a $log
     elif [ "$2" = "icmp" ] || [ "$2" = "ICMP" ]; then
         echo -e "\nTracecroute to "${Int_IPV4_IP}", Port:"${Int_IPV4_Prot}" (ICMP Mode, Max "${Hop_Mode}" Hop, IPv4)" | tee -a $log
         echo -e "============================================================" | tee -a $log
-        ${Nexttrace_file} --pow-provider sakura --data-provider leomoeapi -M -g en -q 1 -n -p "${Int_IPV4_Prot}" -m "${Hop_Mode}" "${Int_IPV4_IP}" | tee -a $log
+        ${Nexttrace_file} ${NT_POW_ARGS} -M -g en -q 1 -n -p "${Int_IPV4_Prot}" -m "${Hop_Mode}" "${Int_IPV4_IP}" | tee -a $log
     else
         echo -e "${Error} 参数错误，请输入 TCP 或 ICMP" && exit 1
     fi  
@@ -1252,16 +1293,18 @@ NT_Specify_IPv6_CN_Mtr(){
     Nexttrace_Ver
     #载入Nexttrace参数
     Nexttrace_Mode
+    #检测 POW 节点
+    nexttrace_detect_pow
     clear
     #开始测试到指定IPv4路由  
     if [ "${Net_Mode}" = "tcp" ] || [ "${Net_Mode}" = "TCP" ]; then
         echo -e "\nTraceroute to "${Int_IPV6_IP}", Port:"${Int_IPV6_Prot}" (TCP Mode, Max "${Hop_Mode}" Hop, IPv6)" | tee -a $log
         echo -e "============================================================" | tee -a $log
-        ${Nexttrace_file} --pow-provider sakura --data-provider leomoeapi -M -g cn -q 1 -n -T -p "${Int_IPV6_Prot}" -m "${Hop_Mode}" "${Int_IPV6_IP}" | tee -a $log
+        ${Nexttrace_file} ${NT_POW_ARGS} -M -g cn -q 1 -n -T -p "${Int_IPV6_Prot}" -m "${Hop_Mode}" "${Int_IPV6_IP}" | tee -a $log
     elif [ "$2" = "icmp" ] || [ "$2" = "ICMP" ]; then
         echo -e "\nTracecroute to "${Int_IPV6_IP}", Port:"${Int_IPV6_Prot}" (ICMP Mode, Max "${Hop_Mode}" Hop, IPv6)" | tee -a $log
         echo -e "============================================================" | tee -a $log
-        ${Nexttrace_file} --pow-provider sakura --data-provider leomoeapi -M -g cn -q 1 -n -p "${Int_IPV6_Prot}" -m "${Hop_Mode}" "${Int_IPV6_IP}" | tee -a $log
+        ${Nexttrace_file} ${NT_POW_ARGS} -M -g cn -q 1 -n -p "${Int_IPV6_Prot}" -m "${Hop_Mode}" "${Int_IPV6_IP}" | tee -a $log
     else
         echo -e "${Error} 参数错误，请输入 TCP 或 ICMP" && exit 1
     fi  
@@ -1281,16 +1324,18 @@ NT_Specify_IPv6_EN_Mtr(){
     Nexttrace_Ver
     #载入Nexttrace参数
     Nexttrace_Mode
+    #检测 POW 节点
+    nexttrace_detect_pow
     clear
     #开始测试到指定IPv4路由  
     if [ "${Net_Mode}" = "tcp" ] || [ "${Net_Mode}" = "TCP" ]; then
         echo -e "\nTraceroute to "${Int_IPV6_IP}", Port:"${Int_IPV6_Prot}" (TCP Mode, Max "${Hop_Mode}" Hop, IPv6)" | tee -a $log
         echo -e "============================================================" | tee -a $log
-        ${Nexttrace_file} --pow-provider sakura --data-provider leomoeapi -M -g en -q 1 -n -T -p "${Int_IPV6_Prot}" -m "${Hop_Mode}" "${Int_IPV6_IP}" | tee -a $log
+        ${Nexttrace_file} ${NT_POW_ARGS} -M -g en -q 1 -n -T -p "${Int_IPV6_Prot}" -m "${Hop_Mode}" "${Int_IPV6_IP}" | tee -a $log
     elif [ "$2" = "icmp" ] || [ "$2" = "ICMP" ]; then
         echo -e "\nTracecroute to "${Int_IPV6_IP}", Port:"${Int_IPV6_Prot}" (ICMP Mode, Max "${Hop_Mode}" Hop, IPv6)" | tee -a $log
         echo -e "============================================================" | tee -a $log
-        ${Nexttrace_file} --pow-provider sakura --data-provider leomoeapi -M -g en -q 1 -n -p "${Int_IPV6_Prot}" -m "${Hop_Mode}" "${Int_IPV6_IP}" | tee -a $log
+        ${Nexttrace_file} ${NT_POW_ARGS} -M -g en -q 1 -n -p "${Int_IPV6_Prot}" -m "${Hop_Mode}" "${Int_IPV6_IP}" | tee -a $log
     else
         echo -e "${Error} 参数错误，请输入 TCP 或 ICMP" && exit 1
     fi  
