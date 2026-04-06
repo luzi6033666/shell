@@ -1,0 +1,78 @@
+name: Sync Latest Binaries
+
+on:
+  schedule:
+    - cron: '0 2 * * *'  # 每天凌晨2点运行
+  workflow_dispatch:      # 支持手动触发
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Sync Nexttrace
+        run: |
+          LATEST=$(curl -sL "https://api.github.com/repos/sjlleo/nexttrace/releases/latest" | grep '"tag_name"' | cut -d'"' -f4)
+          CURRENT=$(cat Nexttrace/version.txt 2>/dev/null || echo "none")
+          echo "Nexttrace: current=$CURRENT latest=$LATEST"
+          if [ "$LATEST" != "$CURRENT" ]; then
+            BASE="https://github.com/sjlleo/nexttrace/releases/download/${LATEST}"
+            curl -sL -o Nexttrace/nexttrace_linux_amd64 "${BASE}/nexttrace_linux_amd64"
+            curl -sL -o Nexttrace/nexttrace_linux_386   "${BASE}/nexttrace_linux_386"
+            curl -sL -o Nexttrace/nexttrace_linux_arm64 "${BASE}/nexttrace_linux_arm64"
+            curl -sL -o Nexttrace/nexttrace_linux_armv7 "${BASE}/nexttrace_linux_armv7"
+            curl -sL -o Nexttrace/nexttrace_linux_mips  "${BASE}/nexttrace_linux_mips"
+            echo "${LATEST}" > Nexttrace/version.txt
+            echo "NEXTTRACE_UPDATED=true" >> $GITHUB_ENV
+            echo "NEXTTRACE_VER=${LATEST}" >> $GITHUB_ENV
+            echo "Nexttrace updated to ${LATEST}"
+          else
+            echo "Nexttrace already at latest ${LATEST}"
+          fi
+
+      - name: Sync curl-impersonate
+        run: |
+          LATEST=$(curl -sL "https://api.github.com/repos/lwthiker/curl-impersonate/releases/latest" | grep '"tag_name"' | cut -d'"' -f4)
+          CURRENT=$(cat curl-impersonate/version.txt 2>/dev/null || echo "none")
+          echo "curl-impersonate: current=$CURRENT latest=$LATEST"
+          if [ "$LATEST" != "$CURRENT" ]; then
+            BASE="https://github.com/lwthiker/curl-impersonate/releases/download/${LATEST}"
+            # 下载各平台压缩包并解压出 curl-impersonate-chrome 二进制
+            curl -sL -o /tmp/ci_x86_64.tar.gz  "${BASE}/curl-impersonate-${LATEST}.x86_64-linux-gnu.tar.gz"
+            curl -sL -o /tmp/ci_aarch64.tar.gz "${BASE}/curl-impersonate-${LATEST}.aarch64-linux-gnu.tar.gz"
+            curl -sL -o /tmp/ci_arm.tar.gz     "${BASE}/curl-impersonate-${LATEST}.arm-linux-gnueabihf.tar.gz"
+            tar -xzf /tmp/ci_x86_64.tar.gz  -C /tmp/ci_x86_64  --wildcards "curl-impersonate-chrome" 2>/dev/null || (mkdir -p /tmp/ci_x86_64  && tar -xzf /tmp/ci_x86_64.tar.gz  -C /tmp/ci_x86_64)
+            tar -xzf /tmp/ci_aarch64.tar.gz -C /tmp/ci_aarch64 --wildcards "curl-impersonate-chrome" 2>/dev/null || (mkdir -p /tmp/ci_aarch64 && tar -xzf /tmp/ci_aarch64.tar.gz -C /tmp/ci_aarch64)
+            tar -xzf /tmp/ci_arm.tar.gz     -C /tmp/ci_arm     --wildcards "curl-impersonate-chrome" 2>/dev/null || (mkdir -p /tmp/ci_arm     && tar -xzf /tmp/ci_arm.tar.gz     -C /tmp/ci_arm)
+            mkdir -p /tmp/ci_x86_64 /tmp/ci_aarch64 /tmp/ci_arm
+            tar -xzf /tmp/ci_x86_64.tar.gz  -C /tmp/ci_x86_64
+            tar -xzf /tmp/ci_aarch64.tar.gz -C /tmp/ci_aarch64
+            tar -xzf /tmp/ci_arm.tar.gz     -C /tmp/ci_arm
+            cp /tmp/ci_x86_64/curl-impersonate-chrome  curl-impersonate/curl-impersonate-chrome_x86_64-linux
+            cp /tmp/ci_aarch64/curl-impersonate-chrome curl-impersonate/curl-impersonate-chrome_aarch64-linux
+            cp /tmp/ci_arm/curl-impersonate-chrome     curl-impersonate/curl-impersonate-chrome_arm-linux
+            echo "${LATEST}" > curl-impersonate/version.txt
+            echo "CURL_IMPERSONATE_UPDATED=true" >> $GITHUB_ENV
+            echo "CURL_IMPERSONATE_VER=${LATEST}" >> $GITHUB_ENV
+            echo "curl-impersonate updated to ${LATEST}"
+          else
+            echo "curl-impersonate already at latest ${LATEST}"
+          fi
+
+      - name: Commit and push if updated
+        if: env.NEXTTRACE_UPDATED == 'true' || env.CURL_IMPERSONATE_UPDATED == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Nexttrace/ curl-impersonate/
+          MSG="chore: sync binaries"
+          [ "$NEXTTRACE_UPDATED" = "true" ] && MSG="$MSG | nexttrace ${NEXTTRACE_VER}"
+          [ "$CURL_IMPERSONATE_UPDATED" = "true" ] && MSG="$MSG | curl-impersonate ${CURL_IMPERSONATE_VER}"
+          git commit -m "$MSG"
+          git push
+
+      - name: No updates needed
+        if: env.NEXTTRACE_UPDATED != 'true' && env.CURL_IMPERSONATE_UPDATED != 'true'
+        run: echo "All binaries already at latest versions."

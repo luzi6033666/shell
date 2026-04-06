@@ -828,25 +828,25 @@ BestTrace_bit(){
     mkdir "${BestTrace_dir}"
     echo -e "${Info} 当前目录建立 BestTrace 文件夹 !"
     if [[ ${bit} == "x64" ]]; then 
-        if ! wget --no-check-certificate -O ${BestTrace_dir}/besttrace_IP https://github.com/Chennhaoo/Shell_Bash/raw/master/BestTrace/besttrace; then
+        if ! wget --no-check-certificate -O ${BestTrace_dir}/besttrace_IP https://raw.githubusercontent.com/luzi6033666/shell/main/BestTrace/besttrace; then
             echo -e "${Error} BestTrace_x64 下载失败 !" && exit 1
         else
             echo -e "${Info} BestTrace_x64 下载完成 !" | tee -a $log
         fi
     elif [[ ${bit} == "x86" ]]; then
-            if ! wget --no-check-certificate -O ${BestTrace_dir}/besttrace_IP https://github.com/Chennhaoo/Shell_Bash/raw/master/BestTrace/besttrace32; then
+            if ! wget --no-check-certificate -O ${BestTrace_dir}/besttrace_IP https://raw.githubusercontent.com/luzi6033666/shell/main/BestTrace/besttrace32; then
             echo -e "${Error} BestTrace_x32 下载失败 !" && exit 1
         else
             echo -e "${Info} BestTrace_x32 下载完成 !" | tee -a $log
         fi 
     elif [[ ${bit} == "aarch64" ]]; then
-            if ! wget --no-check-certificate -O ${BestTrace_dir}/besttrace_IP https://github.com/Chennhaoo/Shell_Bash/raw/master/BestTrace/besttracearm; then
+            if ! wget --no-check-certificate -O ${BestTrace_dir}/besttrace_IP https://raw.githubusercontent.com/luzi6033666/shell/main/BestTrace/besttracearm; then
             echo -e "${Error} BestTrace_ARM 下载失败 !" && exit 1
         else
             echo -e "${Info} BestTrace_ARM 下载完成 !" | tee -a $log
         fi
     elif [[ ${bit} == "arm" ]]; then
-            if ! wget --no-check-certificate -O ${BestTrace_dir}/besttrace_IP https://github.com/Chennhaoo/Shell_Bash/raw/master/BestTrace/besttracearm; then
+            if ! wget --no-check-certificate -O ${BestTrace_dir}/besttrace_IP https://raw.githubusercontent.com/luzi6033666/shell/main/BestTrace/besttracearm; then
             echo -e "${Error} BestTrace_ARM 下载失败 !" && exit 1
         else
             echo -e "${Info} BestTrace_ARM 下载完成 !" | tee -a $log
@@ -887,37 +887,35 @@ Nexttrace_bit(){
     #网址直接获取特定文件最终版
     #https://github.com/sjlleo/nexttrace/releases/latest/download/nexttrace_linux_386 
     #通过Github API获取最新版本号
-    local response=$(curl -L -s https://api.github.com/repos/sjlleo/nexttrace/releases/latest)
-    local NT_Ver=$(echo "$response" | grep -Po '"tag_name": *\K"[^"]*"')
-    local NT_Ver=${NT_Ver//\"}
+    local NT_Ver=$(curl -sL https://raw.githubusercontent.com/luzi6033666/shell/main/Nexttrace/version.txt | tr -d '[:space:]')
     echo -e "${Info} Nexttrace最新版本为 $NT_Ver" | tee -a $log 
     #开始分版本下载
     if [[ ${bit} == "x64" ]]; then 
-        if ! wget --no-check-certificate -O ${Nexttrace_dir}/nexttrace_IP https://github.com/sjlleo/nexttrace/releases/download/$NT_Ver/nexttrace_linux_amd64; then
+        if ! wget --no-check-certificate -O ${Nexttrace_dir}/nexttrace_IP https://raw.githubusercontent.com/luzi6033666/shell/main/Nexttrace/nexttrace_linux_amd64; then
             echo -e "${Error} Nexttrace_x64 下载失败 !" && exit 1
         else
             echo -e "${Info} Nexttrace_x64 下载完成 !" | tee -a $log
         fi
     elif [[ ${bit} == "x86" ]]; then
-            if ! wget --no-check-certificate -O ${Nexttrace_dir}/nexttrace_IP https://github.com/sjlleo/nexttrace/releases/download/$NT_Ver/nexttrace_linux_386; then
+            if ! wget --no-check-certificate -O ${Nexttrace_dir}/nexttrace_IP https://raw.githubusercontent.com/luzi6033666/shell/main/Nexttrace/nexttrace_linux_386; then
             echo -e "${Error} Nexttrace_x32 下载失败 !" && exit 1
         else
             echo -e "${Info} Nexttrace_x32 下载完成 !" | tee -a $log
         fi 
     elif [[ ${bit} == "aarch64" ]]; then
-            if ! wget --no-check-certificate -O ${Nexttrace_dir}/nexttrace_IP https://github.com/sjlleo/nexttrace/releases/download/$NT_Ver/nexttrace_linux_arm64; then
+            if ! wget --no-check-certificate -O ${Nexttrace_dir}/nexttrace_IP https://raw.githubusercontent.com/luzi6033666/shell/main/Nexttrace/nexttrace_linux_arm64; then
             echo -e "${Error} Nexttrace_ARM_X64 下载失败 !" && exit 1
         else
             echo -e "${Info} Nexttrace_ARM_X64 下载完成 !" | tee -a $log
         fi
     elif [[ ${bit} == "arm" ]]; then
-            if ! wget --no-check-certificate -O ${Nexttrace_dir}/nexttrace_IP https://github.com/sjlleo/nexttrace/releases/download/$NT_Ver/nexttrace_linux_armv7; then
+            if ! wget --no-check-certificate -O ${Nexttrace_dir}/nexttrace_IP https://raw.githubusercontent.com/luzi6033666/shell/main/Nexttrace/nexttrace_linux_armv7; then
             echo -e "${Error} Nexttrace_ARM_X32 下载失败 !" && exit 1
         else
             echo -e "${Info} Nexttrace_ARM_X32 下载完成 !" | tee -a $log
         fi
     elif [[ ${bit} == "mips" ]]; then
-            if ! wget --no-check-certificate -O ${Nexttrace_dir}/nexttrace_IP https://github.com/sjlleo/nexttrace/releases/download/$NT_Ver/nexttrace_linux_mips; then
+            if ! wget --no-check-certificate -O ${Nexttrace_dir}/nexttrace_IP https://raw.githubusercontent.com/luzi6033666/shell/main/Nexttrace/nexttrace_linux_mips; then
             echo -e "${Error} Nexttrace_MIPS 下载失败 !" && exit 1
         else
             echo -e "${Info} Nexttrace_MIPS 下载完成 !" | tee -a $log
@@ -956,7 +954,7 @@ Curl_impersonate_bit(){
     mkdir "${Curl_impersonate_dir}"
     echo -e "${Info} 当前目录建立 Curl-impersonate 文件夹 !"
     #开始配置文件下载
-    if ! wget --no-check-certificate -O ${Curl_impersonate_dir}/curl_chrome116 https://raw.githubusercontent.com/Chennhaoo/Shell_Bash/refs/heads/master/curl-impersonate/curl_chrome116; then
+    if ! wget --no-check-certificate -O ${Curl_impersonate_dir}/curl_chrome116 https://raw.githubusercontent.com/luzi6033666/shell/main/curl-impersonate/curl_chrome116; then
         echo -e "${Error} Curl-impersonate 配置文件下载失败 !" && exit 1
     else
         echo -e "${Info} Curl-impersonate 配置文件下载完成 !" | tee -a $log
@@ -970,25 +968,25 @@ Curl_impersonate_bit(){
     fi
     #开始二进制CURL文件下载
     if [[ ${bit} == "x64" ]]; then 
-        if ! wget --no-check-certificate -O ${Curl_impersonate_dir}/curl-impersonate-chrome https://github.com/Chennhaoo/Shell_Bash/raw/refs/heads/master/curl-impersonate/curl-impersonate-chrome_x86_64-linux; then
+        if ! wget --no-check-certificate -O ${Curl_impersonate_dir}/curl-impersonate-chrome https://raw.githubusercontent.com/luzi6033666/shell/main/curl-impersonate/curl-impersonate-chrome_x86_64-linux; then
             echo -e "${Error} Curl-impersonate_x64 下载失败 !" && exit 1
         else
             echo -e "${Info} Curl-impersonate_x64 下载完成 !" | tee -a $log
         fi
     elif [[ ${bit} == "x86" ]]; then
-            if ! wget --no-check-certificate -O ${Curl_impersonate_dir}/curl-impersonate-chrome https://github.com/Chennhaoo/Shell_Bash/raw/refs/heads/master/curl-impersonate/curl-impersonate-chrome_x86_64-linux; then
+            if ! wget --no-check-certificate -O ${Curl_impersonate_dir}/curl-impersonate-chrome https://raw.githubusercontent.com/luzi6033666/shell/main/curl-impersonate/curl-impersonate-chrome_x86_64-linux; then
             echo -e "${Error} Curl-impersonate_x32 下载失败 !" && exit 1
         else
             echo -e "${Info} Curl-impersonate_x32 下载完成 !" | tee -a $log
         fi 
     elif [[ ${bit} == "aarch64" ]]; then
-            if ! wget --no-check-certificate -O ${Curl_impersonate_dir}/curl-impersonate-chrome https://github.com/Chennhaoo/Shell_Bash/raw/refs/heads/master/curl-impersonate/curl-impersonate-chrome_aarch64-linux; then
+            if ! wget --no-check-certificate -O ${Curl_impersonate_dir}/curl-impersonate-chrome https://raw.githubusercontent.com/luzi6033666/shell/main/curl-impersonate/curl-impersonate-chrome_aarch64-linux; then
             echo -e "${Error} Curl-impersonate_ARM_X64 下载失败 !" && exit 1
         else
             echo -e "${Info} Curl-impersonate_ARM_X64 下载完成 !" | tee -a $log
         fi
     elif [[ ${bit} == "arm" ]]; then
-            if ! wget --no-check-certificate -O ${Curl_impersonate_dir}/curl-impersonate-chrome https://github.com/Chennhaoo/Shell_Bash/blob/master/curl-impersonate/curl-impersonate-chrome_arm-linux; then
+            if ! wget --no-check-certificate -O ${Curl_impersonate_dir}/curl-impersonate-chrome https://raw.githubusercontent.com/luzi6033666/shell/main/curl-impersonate/curl-impersonate-chrome_arm-linux; then
             echo -e "${Error} Curl-impersonate_ARM_X32 下载失败 !" && exit 1
         else
             echo -e "${Info} Curl-impersonate_ARM_X32 下载完成 !" | tee -a $log
