@@ -40,12 +40,23 @@ NT_POW_ARGS=""
 nexttrace_detect_pow() {
     local Blue="\033[34m" && local Reset="\033[0m"
     echo -e "${Blue}[检测] 正在检测 NextTrace API 可用性...${Reset}"
-    if ${Nexttrace_file} --data-provider leomoeapi -q 1 -n -m 3 1.1.1.1 >/dev/null 2>&1; then
+    # 检测输出中是否包含 ASAPI Server Error 或 pow token 错误
+    local test_out
+    test_out=$(${Nexttrace_file} --data-provider leomoeapi -q 1 -n -m 3 1.1.1.1 2>&1)
+    if echo "$test_out" | grep -q "ASAPI Server Error\|pow token fetch failed"; then
+        # leomoeapi 有问题，尝试 sakura
+        test_out=$(${Nexttrace_file} --pow-provider sakura --data-provider leomoeapi -q 1 -n -m 3 1.1.1.1 2>&1)
+        if echo "$test_out" | grep -q "ASAPI Server Error\|pow token fetch failed"; then
+            # sakura 也不行，降级用 ipinfo（英文但稳定）
+            NT_POW_ARGS="--data-provider ipinfo"
+            echo -e "${Blue}[检测] API 均受限，降级使用 ipinfo（IP归属为英文）${Reset}"
+        else
+            NT_POW_ARGS="--pow-provider sakura --data-provider leomoeapi"
+            echo -e "${Blue}[检测] 切换至 sakura 节点${Reset}"
+        fi
+    else
         NT_POW_ARGS="--data-provider leomoeapi"
         echo -e "${Blue}[检测] 使用默认 leomoeapi${Reset}"
-    else
-        NT_POW_ARGS="--pow-provider sakura --data-provider leomoeapi"
-        echo -e "${Blue}[检测] leomoeapi 受限，切换至 sakura 节点${Reset}"
     fi
 }
 # ======= Nexttrace POW Provider 检测结束 =======
@@ -58,10 +69,10 @@ judge_route() {
     
     echo -e "\n${Blue}>>> ${title} 线路判断 <<<${Reset}" | tee -a $log
 
-    # 取该序号对应的路由段
+    # 读取本段路由内容（从 NT_BLOCK_START 行到文件末尾）
     local block
-    if [ -n "$no" ]; then
-        block=$(awk "BEGIN{f=0} /^${no} Traceroute/{f=1} f && /^No:[0-9]+\/[0-9]+ Traceroute/ && !/^${no} Traceroute/{f=0} f{print}" "$log")
+    if [ -n "${NT_BLOCK_START}" ] && [ "${NT_BLOCK_START}" -gt 0 ] 2>/dev/null; then
+        block=$(tail -n +"${NT_BLOCK_START}" "$log")
     fi
     [ -z "$block" ] && block=$(tac "$log" | awk "/^No:[0-9]+\/[0-9]+/{found=1} found{print} found && /^==/{exit}" | tac)
 
@@ -509,6 +520,8 @@ BT_IPv4_IP_EN_Mtr(){
 
 #Nexttrace IPv4 回程代码 中文输出 
 NT_Ipv4_mtr_CN(){
+    # 记录本段开始行号
+    NT_BLOCK_START=$(( $(wc -l < "$log") + 1 ))
     if [ "$2" = "tcp" ] || [ "$2" = "TCP" ]; then
         echo -e "\n$5 Traceroute to $4 (TCP Mode, Max $3 Hop, IPv4)" | tee -a $log
         echo -e "===================================================================" | tee -a $log
