@@ -40,34 +40,33 @@ NT_POW_ARGS=""
 nexttrace_detect_pow() {
     local Blue="\033[34m" && local Reset="\033[0m"
     echo -e "${Blue}[检测] 正在检测 NextTrace API 可用性...${Reset}"
-    # 检测输出中是否包含 ASAPI Server Error 或 pow token 错误
     local test_out
+    # 优先尝试 leomoeapi（中文数据）
     test_out=$(${Nexttrace_file} --data-provider leomoeapi -q 1 -n -m 3 1.1.1.1 2>&1)
-    if echo "$test_out" | grep -q "ASAPI Server Error\|pow token fetch failed"; then
-        # leomoeapi 有问题，尝试 sakura
-        test_out=$(${Nexttrace_file} --pow-provider sakura --data-provider leomoeapi -q 1 -n -m 3 1.1.1.1 2>&1)
-        if echo "$test_out" | grep -q "ASAPI Server Error\|pow token fetch failed"; then
-            # sakura 也不行，降级用 ipinfo（英文但稳定）
-            NT_POW_ARGS="--data-provider ipinfo"
-            echo -e "${Blue}[检测] API 均受限，降级使用 ipinfo（IP归属为英文）${Reset}"
-        else
-            NT_POW_ARGS="--pow-provider sakura --data-provider leomoeapi"
-            echo -e "${Blue}[检测] 切换至 sakura 节点${Reset}"
-        fi
-    else
+    if ! echo "$test_out" | grep -q "ASAPI Server Error\|pow token fetch failed"; then
         NT_POW_ARGS="--data-provider leomoeapi"
-        echo -e "${Blue}[检测] 使用默认 leomoeapi${Reset}"
+        echo -e "${Blue}[检测] 使用 leomoeapi（中文）${Reset}"
+        return
     fi
+    # leomoeapi 不可用，尝试 sakura pow 节点
+    test_out=$(${Nexttrace_file} --pow-provider sakura --data-provider leomoeapi -q 1 -n -m 3 1.1.1.1 2>&1)
+    if ! echo "$test_out" | grep -q "ASAPI Server Error\|pow token fetch failed"; then
+        NT_POW_ARGS="--pow-provider sakura --data-provider leomoeapi"
+        echo -e "${Blue}[检测] 切换至 sakura 节点（中文）${Reset}"
+        return
+    fi
+    # 均不可用，回退 ipinfo（稳定，英文）
+    NT_POW_ARGS="--data-provider ipinfo"
+    echo -e "${Blue}[检测] API 受限，使用 ipinfo（英文）${Reset}"
 }
 # ======= Nexttrace POW Provider 检测结束 =======
 # ======= 线路判断函数 =======
+ROUTE_SUMMARY=()  # 存储各条路由的判断结果
+
 judge_route() {
     local log=$1
     local title=$2
     local no=$3
-    local Blue="\033[34m" && local Yellow="\033[33m" && local Green="\033[32m" && local Reset="\033[0m"
-    
-    echo -e "\n${Blue}>>> ${title} 线路判断 <<<${Reset}" | tee -a $log
 
     # 读取本段路由内容（从 NT_BLOCK_START 行到文件末尾）
     local block
@@ -86,31 +85,46 @@ judge_route() {
     local has_as9808=$(echo "$block"  | grep -ci "AS9808\|211\.136\.")
     local has_as4134=$(echo "$block"  | grep -ci "AS4134\|CHINANET")
 
+    local result
     # 电信
     if [ "$has_5943" -gt 0 ] && [ "$has_20297" -eq 0 ]; then
-        echo -e "${Yellow}  → 电信 CN2 GIA（59.43 直连，无 202.97 绕行）${Reset}" | tee -a $log
+        result="电信 CN2 GIA"
     elif [ "$has_5943" -gt 0 ] && [ "$has_20297" -gt 0 ]; then
-        echo -e "${Yellow}  → 电信 CN2 GT（经过 59.43 和 202.97）${Reset}" | tee -a $log
+        result="电信 CN2 GT"
     elif [ "$has_as4134" -gt 0 ] && [ "$has_5943" -eq 0 ]; then
-        echo -e "${Yellow}  → 电信 163 普通骨干网（AS4134，无 CN2）${Reset}" | tee -a $log
+        result="电信 163"
     # 联通
     elif [ "$has_as10099" -gt 0 ]; then
-        echo -e "${Green}  → 联通 AS10099 精品网（iBGP）${Reset}" | tee -a $log
+        result="联通 AS10099 精品网"
     elif [ "$has_as9929" -gt 0 ]; then
-        echo -e "${Green}  → 联通 AS9929 精品网（A网）${Reset}" | tee -a $log
+        result="联通 AS9929 精品网"
     elif [ "$has_as4837" -gt 0 ]; then
-        echo -e "${Green}  → 联通 169 普通骨干网（AS4837）${Reset}" | tee -a $log
+        result="联通 169"
     # 移动
     elif [ "$has_as58807" -gt 0 ]; then
-        echo -e "${Blue}  → 移动 CMIN2 精品国际网（AS58807）${Reset}" | tee -a $log
+        result="移动 CMIN2"
     elif [ "$has_as58453" -gt 0 ]; then
-        echo -e "${Blue}  → 移动 CMI 普通国际网（AS58453）${Reset}" | tee -a $log
+        result="移动 CMI"
     elif [ "$has_as9808" -gt 0 ]; then
-        echo -e "${Blue}  → 移动国内骨干（AS9808）${Reset}" | tee -a $log
+        result="移动骨干"
     else
-        echo -e "${Yellow}  → 未能识别线路（可能为其他运营商或全程 *）${Reset}" | tee -a $log
+        result="未识别"
     fi
-    echo -e "${Blue}================================${Reset}\n" | tee -a $log
+    ROUTE_SUMMARY+=("${no} ${title}: ${result}")
+}
+
+print_route_summary() {
+    local log=$1
+    local Yellow="\033[33m" && local Green="\033[32m" && local Blue="\033[34m" && local Reset="\033[0m" && local Bold="\033[1m"
+    echo -e "\n${Bold}============= 线路判断汇总 =============${Reset}" | tee -a $log
+    for item in "${ROUTE_SUMMARY[@]}"; do
+        local color="$Yellow"
+        echo "$item" | grep -q "联通" && color="$Green"
+        echo "$item" | grep -q "移动" && color="$Blue"
+        echo -e "${color}  $item${Reset}" | tee -a $log
+    done
+    echo -e "${Bold}========================================${Reset}\n" | tee -a $log
+    ROUTE_SUMMARY=()
 }
 # ======= 线路判断函数结束 =======
 Info="${Green_font_prefix}[信息]${Font_color_suffix}"
@@ -571,6 +585,8 @@ NT_IPv4_IP_CN_Mtr(){
     judge_route "$log" "${IPv4_8_name}" "No:8/9"
     NT_Ipv4_mtr_CN "${IPv4_9}" "${Net_Mode}" "${Hop_Mode}" "${IPv4_9_name}" "No:9/9"
     judge_route "$log" "${IPv4_9_name}" "No:9/9"
+    #输出线路判断汇总
+    print_route_summary "$log"
     #保留IPv4回程路由日志
     echo -e "${Info} 回程路由路径已保存在${Green_font_prefix} ${log} ${Font_color_suffix}中，如不需要请自行删除 !" 	
     #删除Nexttrace执行文件
