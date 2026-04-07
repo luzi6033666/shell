@@ -2,6 +2,20 @@
 PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin
 export PATH
 
+# 如果通过管道或进程替换运行(如 bash <(curl ...))，自动下载到本地再执行
+if [ ! -t 0 ] && [ -z "$_AUTOTRACE_LOCAL" ]; then
+    _tmp_script="/tmp/AutoTrace_$$.sh"
+    if command -v curl &>/dev/null; then
+        curl -sL "https://raw.githubusercontent.com/luzi6033666/shell/main/AutoTrace.sh" -o "$_tmp_script"
+    elif command -v wget &>/dev/null; then
+        wget -qO "$_tmp_script" "https://raw.githubusercontent.com/luzi6033666/shell/main/AutoTrace.sh"
+    else
+        echo "[错误] 需要 curl 或 wget" && exit 1
+    fi
+    chmod +x "$_tmp_script"
+    _AUTOTRACE_LOCAL=1 exec bash "$_tmp_script" "$@"
+fi
+
 #=================================================
 #	System Required: CentOS/Debian/Ubuntu
 #	Description: 三网回程路由详细测试
