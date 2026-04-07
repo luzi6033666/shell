@@ -584,33 +584,32 @@ judge_route() {
         result="未识别"
     fi
 
-    # 检测是否经过国际中转（附加信息）
-    # 注意：只检测真正的骨干网/Transit中转，不包括机房自身网络（VPS/云/CDN提供商）
+    # 检测经过的骨干网路径
+    # 注意：只检测真正的骨干网/Transit，不包括机房自身网络（VPS/云/CDN提供商）
     if [ "$result" != "未识别" ]; then
         if echo "$result" | grep -qE "电信|联通|移动|鹏博士|教育网|科技网|长城|阿里云|腾讯云|百度云|华为云"; then
-            [ "$has_ntt" -gt 0 ] && transit="${transit}+NTT "
-            [ "$has_gtt" -gt 0 ] && transit="${transit}+GTT "
-            [ "$has_cogent" -gt 0 ] && transit="${transit}+Cogent "
-            [ "$has_telia" -gt 0 ] && transit="${transit}+Telia "
-            [ "$has_he" -gt 0 ] && transit="${transit}+HE "
-            [ "$has_level3" -gt 0 ] && transit="${transit}+Level3 "
-            [ "$has_pccw" -gt 0 ] && transit="${transit}+PCCW "
-            [ "$has_softbank" -gt 0 ] && transit="${transit}+软银 "
-            [ "$has_zayo" -gt 0 ] && transit="${transit}+Zayo "
-            [ "$has_tata" -gt 0 ] && transit="${transit}+Tata "
-            [ "$has_seabone" -gt 0 ] && transit="${transit}+Seabone "
-            [ "$has_kddi" -gt 0 ] && transit="${transit}+KDDI "
-            [ "$has_hgc" -gt 0 ] && transit="${transit}+HGC "
-            [ "$has_colt" -gt 0 ] && transit="${transit}+Colt "
-            [ "$has_retn" -gt 0 ] && transit="${transit}+RETN "
-            [ "$has_telxius" -gt 0 ] && transit="${transit}+Telxius "
-            [ "$has_hibernia" -gt 0 ] && transit="${transit}+Hibernia "
+            [ "$has_ntt" -gt 0 ] && transit="${transit}NTT → "
+            [ "$has_gtt" -gt 0 ] && transit="${transit}GTT → "
+            [ "$has_cogent" -gt 0 ] && transit="${transit}Cogent → "
+            [ "$has_telia" -gt 0 ] && transit="${transit}Telia → "
+            [ "$has_he" -gt 0 ] && transit="${transit}HE → "
+            [ "$has_level3" -gt 0 ] && transit="${transit}Level3 → "
+            [ "$has_pccw" -gt 0 ] && transit="${transit}PCCW → "
+            [ "$has_softbank" -gt 0 ] && transit="${transit}软银 → "
+            [ "$has_zayo" -gt 0 ] && transit="${transit}Zayo → "
+            [ "$has_tata" -gt 0 ] && transit="${transit}Tata → "
+            [ "$has_seabone" -gt 0 ] && transit="${transit}Seabone → "
+            [ "$has_kddi" -gt 0 ] && transit="${transit}KDDI → "
+            [ "$has_hgc" -gt 0 ] && transit="${transit}HGC → "
+            [ "$has_colt" -gt 0 ] && transit="${transit}Colt → "
+            [ "$has_retn" -gt 0 ] && transit="${transit}RETN → "
+            [ "$has_telxius" -gt 0 ] && transit="${transit}Telxius → "
+            [ "$has_hibernia" -gt 0 ] && transit="${transit}Hibernia → "
         fi
     fi
 
     if [ -n "$transit" ]; then
-        transit=$(echo "$transit" | sed 's/ $//')
-        result="${result} [中转: ${transit}]"
+        result="${transit}${result}"
     fi
 
     # 提取最后一跳的延迟（目标延迟）
