@@ -75,6 +75,7 @@ judge_route() {
     fi
     [ -z "$block" ] && block=$(tac "$log" | awk "/^No:[0-9]+\/[0-9]+/{found=1} found{print} found && /^==/{exit}" | tac)
 
+    # ---- 中国三大运营商 ----
     local has_5943=$(echo "$block"    | grep -c "59\.43\.")
     local has_20297=$(echo "$block"   | grep -c "202\.97\.")
     local has_as9929=$(echo "$block"  | grep -ci "AS9929\|210\.51\.")
@@ -85,7 +86,175 @@ judge_route() {
     local has_as9808=$(echo "$block"  | grep -ci "AS9808\|211\.136\.")
     local has_as4134=$(echo "$block"  | grep -ci "AS4134\|CHINANET")
 
+    # ---- 中国其他 ----
+    local has_drpeng=$(echo "$block"    | grep -ci "AS17964\|drpeng\|Dr\.Peng")
+    local has_cernet=$(echo "$block"    | grep -ci "AS4538\|CERNET\|edu\.cn")
+    local has_cstnet=$(echo "$block"    | grep -ci "AS7497\|CSTNET")
+    local has_gwbn=$(echo "$block"      | grep -ci "AS9801\|gwbn")
+    local has_alicloud=$(echo "$block"  | grep -ci "AS45102\|AS37963\|alibaba\|aliyun")
+    local has_tencloud=$(echo "$block"  | grep -ci "AS45090\|AS132203\|tencent\|tencentyun")
+    local has_baidu=$(echo "$block"     | grep -ci "AS45076\|baidu")
+    local has_huaweicloud=$(echo "$block" | grep -ci "AS136907\|huaweicloud")
+
+    # ---- 日本 ----
+    local has_softbank=$(echo "$block"  | grep -ci "AS17676\|AS9824\|softbank\|bbtec")
+    local has_ntt=$(echo "$block"       | grep -ci "AS2914\|ntt\.net\|gin\.ntt")
+    local has_ntt_com=$(echo "$block"   | grep -ci "AS4713\|ntt\.com\|ocn\.ad\.jp")
+    local has_kddi=$(echo "$block"      | grep -ci "AS2516\|kddi\|dion\.ne\.jp")
+    local has_iij=$(echo "$block"       | grep -ci "AS2497\|iij\.ad\.jp")
+    local has_biglobe=$(echo "$block"   | grep -ci "AS2518\|biglobe")
+    local has_sonet=$(echo "$block"     | grep -ci "AS2527\|so-net")
+    local has_freebit=$(echo "$block"   | grep -ci "AS10013\|freebit")
+    local has_jpix=$(echo "$block"      | grep -ci "AS7527\|jpix")
+    local has_bbix=$(echo "$block"      | grep -ci "AS23640\|bbix")
+
+    # ---- 香港 ----
+    local has_pccw=$(echo "$block"      | grep -ci "AS3491\|pccw\|pccwglobal")
+    local has_hgc=$(echo "$block"       | grep -ci "AS9304\|hgc\|hutchison")
+    local has_hkbn=$(echo "$block"      | grep -ci "AS9269\|hkbn\|hk broadband")
+    local has_hkt=$(echo "$block"       | grep -ci "AS4515\|hkt\.com\|netvigator")
+    local has_hkix=$(echo "$block"      | grep -ci "AS4635\|hkix")
+
+    # ---- 台湾 ----
+    local has_hinet=$(echo "$block"     | grep -ci "AS3462\|hinet\|cht\.com\.tw")
+    local has_seednet=$(echo "$block"   | grep -ci "AS4780\|seednet")
+    local has_twm=$(echo "$block"       | grep -ci "AS9924\|taiwanmobile\|台湾大")
+    local has_fetnet=$(echo "$block"    | grep -ci "AS4182\|fetnet\|远传")
+    local has_aptg=$(echo "$block"      | grep -ci "AS17709\|aptg\|亚太电信")
+    local has_tbc=$(echo "$block"       | grep -ci "AS131596\|tbc\|tbcom")
+
+    # ---- 韩国 ----
+    local has_kt=$(echo "$block"        | grep -ci "AS4766\|Korea Telecom\|kt\.co\.kr")
+    local has_sk=$(echo "$block"        | grep -ci "AS9318\|SK Broadband\|skbroadband")
+    local has_lg=$(echo "$block"        | grep -ci "AS17858\|LG U+\|LG DACOM\|lgdacom")
+    local has_kinx=$(echo "$block"      | grep -ci "AS9286\|kinx\.net")
+
+    # ---- 东南亚 ----
+    local has_singtel=$(echo "$block"   | grep -ci "AS7473\|AS7474\|singtel")
+    local has_starhub=$(echo "$block"   | grep -ci "AS4657\|starhub")
+    local has_myrepublic=$(echo "$block" | grep -ci "AS56300\|myrepublic")
+    local has_vnpt=$(echo "$block"      | grep -ci "AS45899\|vnpt")
+    local has_cat=$(echo "$block"       | grep -ci "AS131090\|AS23969\|cat\.net\.th\|catelecom")
+    local has_true=$(echo "$block"      | grep -ci "AS7470\|trueidc\|true\.th")
+    local has_pldt=$(echo "$block"      | grep -ci "AS9299\|pldt")
+    local has_globe=$(echo "$block"     | grep -ci "AS4775\|globe\.com\.ph")
+    local has_telkom_id=$(echo "$block" | grep -ci "AS7713\|telkom\.net\.id\|telkomindonesia")
+
+    # ---- 澳大利亚/新西兰 ----
+    local has_telstra=$(echo "$block"   | grep -ci "AS1221\|telstra")
+    local has_optus=$(echo "$block"     | grep -ci "AS4804\|optus")
+    local has_tpg=$(echo "$block"       | grep -ci "AS7545\|AS4764\|tpg\.com\.au\|iinet")
+    local has_vocus=$(echo "$block"     | grep -ci "AS4826\|AS9443\|vocus\|nextgen")
+    local has_spark_nz=$(echo "$block"  | grep -ci "AS4771\|spark\.co\.nz")
+
+    # ---- 印度 ----
+    local has_jio=$(echo "$block"       | grep -ci "AS55836\|AS18101\|jio\|ril\.com")
+    local has_airtel_in=$(echo "$block" | grep -ci "AS9498\|AS45609\|airtel\.in\|airtelbroadband")
+    local has_bsnl=$(echo "$block"      | grep -ci "AS9829\|bsnl")
+    local has_tata_in=$(echo "$block"   | grep -ci "AS4755\|vsnl")
+    local has_mtnl=$(echo "$block"      | grep -ci "AS17813\|mtnl")
+
+    # ---- 美国/北美 ----
+    local has_gtt=$(echo "$block"       | grep -ci "AS3257\|gtt\.net")
+    local has_cogent=$(echo "$block"    | grep -ci "AS174\|cogent")
+    local has_he=$(echo "$block"        | grep -ci "AS6939\|he\.net\|hurricane")
+    local has_level3=$(echo "$block"    | grep -ci "AS3356\|level3\|lumen\|centurylink")
+    local has_zayo=$(echo "$block"      | grep -ci "AS6461\|zayo")
+    local has_att=$(echo "$block"       | grep -ci "AS7018\|att\.net")
+    local has_verizon=$(echo "$block"   | grep -ci "AS701\|verizon")
+    local has_sprint=$(echo "$block"    | grep -ci "AS1239\|sprint\|sprintlink")
+    local has_charter=$(echo "$block"   | grep -ci "AS20115\|charter\|spectrum")
+    local has_comcast=$(echo "$block"   | grep -ci "AS7922\|comcast")
+    local has_rogers=$(echo "$block"    | grep -ci "AS812\|rogers\.com")
+    local has_telus=$(echo "$block"     | grep -ci "AS852\|telus")
+    local has_windstream=$(echo "$block" | grep -ci "AS7029\|windstream")
+
+    # ---- 欧洲 ----
+    local has_telia=$(echo "$block"     | grep -ci "AS1299\|telia\|arelion")
+    local has_dtag=$(echo "$block"      | grep -ci "AS3320\|dtag\|telekom\.de")
+    local has_orange=$(echo "$block"    | grep -ci "AS5511\|opentransit")
+    local has_vodafone=$(echo "$block"  | grep -ci "AS1273\|vodafone")
+    local has_swisscom=$(echo "$block"  | grep -ci "AS3303\|swisscom")
+    local has_bt=$(echo "$block"        | grep -ci "AS2856\|bt\.net")
+    local has_telefonica=$(echo "$block" | grep -ci "AS12956\|telefonica\|telxius")
+    local has_tele2=$(echo "$block"     | grep -ci "AS1257\|tele2")
+    local has_liberty=$(echo "$block"   | grep -ci "AS6830\|liberty\|libertyglobal")
+    local has_retn=$(echo "$block"      | grep -ci "AS9002\|retn")
+    local has_turktelekom=$(echo "$block" | grep -ci "AS9121\|turk.*telekom\|ttnet")
+    local has_colt=$(echo "$block"      | grep -ci "AS8220\|colt\.net")
+    local has_eunetworks=$(echo "$block" | grep -ci "AS13237\|eunetworks")
+    local has_telenor=$(echo "$block"   | grep -ci "AS2119\|telenor")
+    local has_kpn=$(echo "$block"       | grep -ci "AS1136\|AS286\|kpn\.net")
+    local has_proximus=$(echo "$block"  | grep -ci "AS5432\|proximus\|belgacom")
+    local has_a1=$(echo "$block"        | grep -ci "AS8447\|a1\.net\|aon\.at")
+    local has_init7=$(echo "$block"     | grep -ci "AS13030\|init7")
+    local has_ovh=$(echo "$block"       | grep -ci "AS16276\|ovh\.net")
+    local has_hetzner=$(echo "$block"   | grep -ci "AS24940\|hetzner\|your-server\.de")
+    local has_scaleway=$(echo "$block"  | grep -ci "AS12876\|scaleway\|online\.net")
+    local has_turkcell=$(echo "$block"  | grep -ci "AS34984\|turkcell")
+
+    # ---- 全球骨干/Transit ----
+    local has_tata=$(echo "$block"      | grep -ci "AS6453\|tatacommunications")
+    local has_seabone=$(echo "$block"   | grep -ci "AS6762\|seabone\|sparkle\|tisparkle")
+    local has_ixreach=$(echo "$block"   | grep -ci "AS43531\|ix-reach\|ixreach")
+    local has_telxius=$(echo "$block"   | grep -ci "AS12956\|telxius")
+    local has_hibernia=$(echo "$block"  | grep -ci "AS5765\|hibernia")
+    local has_packetfabric=$(echo "$block" | grep -ci "AS4556\|packetfabric")
+
+    # ---- IX 交换中心 ----
+    local has_decix=$(echo "$block"     | grep -ci "AS6695\|de-cix")
+    local has_amsix=$(echo "$block"     | grep -ci "AS1200\|ams-ix")
+    local has_linx=$(echo "$block"      | grep -ci "AS5459\|linx\.net")
+    local has_equinix_ix=$(echo "$block" | grep -ci "AS24115\|equinix.*ix\|eqix")
+    local has_megaport=$(echo "$block"  | grep -ci "AS132863\|megaport")
+
+    # ---- 云/CDN ----
+    local has_zenlayer=$(echo "$block"  | grep -ci "AS21859\|zenlayer")
+    local has_aws=$(echo "$block"       | grep -ci "AS16509\|AS14618\|amazonaws\|amazon\.com")
+    local has_gcp=$(echo "$block"       | grep -ci "AS15169\|AS396982\|1e100\.net\|google")
+    local has_azure=$(echo "$block"     | grep -ci "AS8075\|AS8068\|msn\.net\|microsoft")
+    local has_cloudflare=$(echo "$block" | grep -ci "AS13335\|cloudflare")
+    local has_akamai=$(echo "$block"    | grep -ci "AS20940\|AS16625\|akamai")
+    local has_fastly=$(echo "$block"    | grep -ci "AS54113\|fastly")
+    local has_edgecast=$(echo "$block"  | grep -ci "AS15133\|edgecast\|edgio")
+    local has_oracle=$(echo "$block"    | grep -ci "AS31898\|oraclecloud")
+    local has_digitalocean=$(echo "$block" | grep -ci "AS14061\|digitalocean")
+    local has_vultr=$(echo "$block"     | grep -ci "AS20473\|vultr\|choopa")
+    local has_linode=$(echo "$block"    | grep -ci "AS63949\|linode")
+
+    # ---- 俄罗斯 ----
+    local has_rostelecom=$(echo "$block" | grep -ci "AS12389\|rostelecom")
+    local has_ttk=$(echo "$block"       | grep -ci "AS20485\|ttk\.ru\|transtelecom")
+
+    # ---- 中东 ----
+    local has_stc=$(echo "$block"       | grep -ci "AS39891\|AS25019\|stc\.com\.sa")
+    local has_etisalat=$(echo "$block"  | grep -ci "AS8966\|etisalat")
+    local has_du=$(echo "$block"        | grep -ci "AS15802\|du\.ae\|emirates.*integrated")
+    local has_zain=$(echo "$block"      | grep -ci "AS42961\|zain")
+    local has_ooredoo=$(echo "$block"   | grep -ci "AS8781\|AS21050\|ooredoo")
+    local has_bezeq=$(echo "$block"     | grep -ci "AS8551\|bezeqint")
+    local has_telecom_eg=$(echo "$block" | grep -ci "AS8452\|tedata\|te\.eg")
+
+    # ---- 非洲 ----
+    local has_mtn=$(echo "$block"       | grep -ci "AS16637\|mtn\.co\|mtn\.com")
+    local has_liquid=$(echo "$block"    | grep -ci "AS30844\|liquid.*telecom")
+    local has_safaricom=$(echo "$block" | grep -ci "AS33771\|safaricom")
+    local has_seacom=$(echo "$block"    | grep -ci "AS37100\|seacom")
+    local has_vodacom=$(echo "$block"   | grep -ci "AS36994\|vodacom")
+    local has_maroc=$(echo "$block"     | grep -ci "AS6713\|iam\.net\.ma\|maroc")
+
+    # ---- 拉美 ----
+    local has_telmex=$(echo "$block"    | grep -ci "AS8151\|telmex")
+    local has_claro=$(echo "$block"     | grep -ci "AS4230\|AS28573\|claro")
+    local has_vivo=$(echo "$block"      | grep -ci "AS26599\|AS27699\|vivo\.com\.br")
+    local has_oi=$(echo "$block"        | grep -ci "AS7738\|oi\.com\.br\|telemar")
+    local has_embratel=$(echo "$block"  | grep -ci "AS4230\|embratel")
+    local has_tim_br=$(echo "$block"    | grep -ci "AS26615\|timbrasil")
+
     local result
+    local transit=""
+
+    # ========== 中国三大运营商线路（优先判断） ==========
     # 电信
     if [ "$has_5943" -gt 0 ] && [ "$has_20297" -eq 0 ]; then
         result="电信 CN2 GIA"
@@ -103,27 +272,387 @@ judge_route() {
     # 移动
     elif [ "$has_as58807" -gt 0 ]; then
         result="移动 CMIN2"
-    elif [ "$has_as58453" -gt 0 ]; then
+    elif [ "$has_as58453" -gt 0 ] || [ "$has_as9808" -gt 0 ]; then
         result="移动 CMI"
-    elif [ "$has_as9808" -gt 0 ]; then
-        result="移动骨干"
+    # 中国其他
+    elif [ "$has_drpeng" -gt 0 ]; then
+        result="鹏博士 Dr.Peng"
+    elif [ "$has_cernet" -gt 0 ]; then
+        result="教育网 CERNET"
+    elif [ "$has_cstnet" -gt 0 ]; then
+        result="科技网 CSTNET"
+    elif [ "$has_gwbn" -gt 0 ]; then
+        result="长城宽带 GWBN"
+    elif [ "$has_alicloud" -gt 0 ]; then
+        result="阿里云"
+    elif [ "$has_tencloud" -gt 0 ]; then
+        result="腾讯云"
+    elif [ "$has_baidu" -gt 0 ]; then
+        result="百度云"
+    elif [ "$has_huaweicloud" -gt 0 ]; then
+        result="华为云"
+
+    # ========== 日本运营商 ==========
+    elif [ "$has_softbank" -gt 0 ]; then
+        result="日本 软银 SoftBank"
+    elif [ "$has_iij" -gt 0 ]; then
+        result="日本 IIJ"
+    elif [ "$has_kddi" -gt 0 ]; then
+        result="日本 KDDI"
+    elif [ "$has_ntt_com" -gt 0 ]; then
+        result="日本 NTT Communications"
+    elif [ "$has_ntt" -gt 0 ]; then
+        result="NTT (全球骨干)"
+    elif [ "$has_biglobe" -gt 0 ]; then
+        result="日本 BIGLOBE"
+    elif [ "$has_sonet" -gt 0 ]; then
+        result="日本 So-net"
+    elif [ "$has_freebit" -gt 0 ]; then
+        result="日本 FreeBit"
+    elif [ "$has_jpix" -gt 0 ]; then
+        result="日本 JPIX"
+    elif [ "$has_bbix" -gt 0 ]; then
+        result="日本 BBIX"
+
+    # ========== 香港运营商 ==========
+    elif [ "$has_pccw" -gt 0 ]; then
+        result="香港 PCCW"
+    elif [ "$has_hgc" -gt 0 ]; then
+        result="香港 HGC 环球全域"
+    elif [ "$has_hkbn" -gt 0 ]; then
+        result="香港 HKBN 香港宽频"
+    elif [ "$has_hkt" -gt 0 ]; then
+        result="香港 HKT"
+    elif [ "$has_hkix" -gt 0 ]; then
+        result="香港 HKIX"
+
+    # ========== 台湾运营商 ==========
+    elif [ "$has_hinet" -gt 0 ]; then
+        result="台湾 HiNet (中华电信)"
+    elif [ "$has_seednet" -gt 0 ] || [ "$has_fetnet" -gt 0 ]; then
+        result="台湾 远传电信/Seednet"
+    elif [ "$has_twm" -gt 0 ]; then
+        result="台湾 TWM (台湾大哥大)"
+    elif [ "$has_aptg" -gt 0 ]; then
+        result="台湾 APTG (亚太电信)"
+    elif [ "$has_tbc" -gt 0 ]; then
+        result="台湾 TBC (台湾宽频)"
+
+    # ========== 韩国运营商 ==========
+    elif [ "$has_kt" -gt 0 ]; then
+        result="韩国 KT"
+    elif [ "$has_sk" -gt 0 ]; then
+        result="韩国 SK Broadband"
+    elif [ "$has_lg" -gt 0 ]; then
+        result="韩国 LG U+"
+    elif [ "$has_kinx" -gt 0 ]; then
+        result="韩国 KINX"
+
+    # ========== 东南亚 ==========
+    elif [ "$has_singtel" -gt 0 ]; then
+        result="新加坡 Singtel"
+    elif [ "$has_starhub" -gt 0 ]; then
+        result="新加坡 StarHub"
+    elif [ "$has_myrepublic" -gt 0 ]; then
+        result="新加坡 MyRepublic"
+    elif [ "$has_vnpt" -gt 0 ]; then
+        result="越南 VNPT"
+    elif [ "$has_cat" -gt 0 ]; then
+        result="泰国 CAT Telecom"
+    elif [ "$has_true" -gt 0 ]; then
+        result="泰国 True"
+    elif [ "$has_pldt" -gt 0 ]; then
+        result="菲律宾 PLDT"
+    elif [ "$has_globe" -gt 0 ]; then
+        result="菲律宾 Globe"
+    elif [ "$has_telkom_id" -gt 0 ]; then
+        result="印尼 Telkom Indonesia"
+
+    # ========== 澳大利亚/新西兰 ==========
+    elif [ "$has_telstra" -gt 0 ]; then
+        result="澳洲 Telstra"
+    elif [ "$has_optus" -gt 0 ]; then
+        result="澳洲 Optus"
+    elif [ "$has_tpg" -gt 0 ]; then
+        result="澳洲 TPG/iiNet"
+    elif [ "$has_vocus" -gt 0 ]; then
+        result="澳洲 Vocus/NextGen"
+    elif [ "$has_spark_nz" -gt 0 ]; then
+        result="新西兰 Spark"
+
+    # ========== 印度运营商 ==========
+    elif [ "$has_jio" -gt 0 ]; then
+        result="印度 Jio (Reliance)"
+    elif [ "$has_airtel_in" -gt 0 ]; then
+        result="印度 Airtel"
+    elif [ "$has_bsnl" -gt 0 ]; then
+        result="印度 BSNL"
+    elif [ "$has_tata_in" -gt 0 ]; then
+        result="印度 Tata/VSNL"
+    elif [ "$has_mtnl" -gt 0 ]; then
+        result="印度 MTNL"
+
+    # ========== 全球骨干/Transit ==========
+    elif [ "$has_gtt" -gt 0 ]; then
+        result="GTT (全球骨干)"
+    elif [ "$has_cogent" -gt 0 ]; then
+        result="Cogent (全球骨干)"
+    elif [ "$has_he" -gt 0 ]; then
+        result="HE 飓风电气 (全球骨干)"
+    elif [ "$has_level3" -gt 0 ]; then
+        result="Level3/Lumen (全球骨干)"
+    elif [ "$has_telia" -gt 0 ]; then
+        result="Telia/Arelion (欧洲骨干)"
+    elif [ "$has_zayo" -gt 0 ]; then
+        result="Zayo (北美骨干)"
+    elif [ "$has_tata" -gt 0 ]; then
+        result="Tata Communications (全球骨干)"
+    elif [ "$has_seabone" -gt 0 ]; then
+        result="Seabone/TI Sparkle (全球骨干)"
+    elif [ "$has_colt" -gt 0 ]; then
+        result="Colt (欧洲骨干)"
+    elif [ "$has_eunetworks" -gt 0 ]; then
+        result="euNetworks (欧洲骨干)"
+    elif [ "$has_ixreach" -gt 0 ]; then
+        result="IX Reach (全球骨干)"
+    elif [ "$has_retn" -gt 0 ]; then
+        result="RETN (欧亚骨干)"
+    elif [ "$has_hibernia" -gt 0 ]; then
+        result="Hibernia (跨大西洋骨干)"
+    elif [ "$has_packetfabric" -gt 0 ]; then
+        result="PacketFabric (北美骨干)"
+
+    # ========== IX 交换中心 ==========
+    elif [ "$has_decix" -gt 0 ]; then
+        result="DE-CIX (德国IX)"
+    elif [ "$has_amsix" -gt 0 ]; then
+        result="AMS-IX (荷兰IX)"
+    elif [ "$has_linx" -gt 0 ]; then
+        result="LINX (英国IX)"
+    elif [ "$has_equinix_ix" -gt 0 ]; then
+        result="Equinix IX (全球IX)"
+    elif [ "$has_megaport" -gt 0 ]; then
+        result="Megaport (全球IX)"
+
+    # ========== 云/CDN ==========
+    elif [ "$has_zenlayer" -gt 0 ]; then
+        result="Zenlayer (全球CDN/云)"
+    elif [ "$has_aws" -gt 0 ]; then
+        result="AWS (亚马逊云)"
+    elif [ "$has_gcp" -gt 0 ]; then
+        result="GCP (谷歌云)"
+    elif [ "$has_azure" -gt 0 ]; then
+        result="Azure (微软云)"
+    elif [ "$has_cloudflare" -gt 0 ]; then
+        result="Cloudflare"
+    elif [ "$has_akamai" -gt 0 ]; then
+        result="Akamai (CDN)"
+    elif [ "$has_fastly" -gt 0 ]; then
+        result="Fastly (CDN)"
+    elif [ "$has_edgecast" -gt 0 ]; then
+        result="Edgecast/Edgio (CDN)"
+    elif [ "$has_oracle" -gt 0 ]; then
+        result="Oracle Cloud"
+    elif [ "$has_digitalocean" -gt 0 ]; then
+        result="DigitalOcean"
+    elif [ "$has_vultr" -gt 0 ]; then
+        result="Vultr/Choopa"
+    elif [ "$has_linode" -gt 0 ]; then
+        result="Linode"
+    elif [ "$has_ovh" -gt 0 ]; then
+        result="OVHcloud"
+    elif [ "$has_hetzner" -gt 0 ]; then
+        result="Hetzner"
+    elif [ "$has_scaleway" -gt 0 ]; then
+        result="Scaleway"
+
+    # ========== 美国/加拿大运营商 ==========
+    elif [ "$has_att" -gt 0 ]; then
+        result="美国 AT&T"
+    elif [ "$has_verizon" -gt 0 ]; then
+        result="美国 Verizon"
+    elif [ "$has_sprint" -gt 0 ]; then
+        result="美国 Sprint"
+    elif [ "$has_charter" -gt 0 ]; then
+        result="美国 Charter/Spectrum"
+    elif [ "$has_comcast" -gt 0 ]; then
+        result="美国 Comcast"
+    elif [ "$has_windstream" -gt 0 ]; then
+        result="美国 Windstream"
+    elif [ "$has_rogers" -gt 0 ]; then
+        result="加拿大 Rogers"
+    elif [ "$has_telus" -gt 0 ]; then
+        result="加拿大 Telus"
+
+    # ========== 欧洲运营商 ==========
+    elif [ "$has_dtag" -gt 0 ]; then
+        result="德国 DTAG (德国电信)"
+    elif [ "$has_orange" -gt 0 ]; then
+        result="法国 Orange"
+    elif [ "$has_vodafone" -gt 0 ]; then
+        result="欧洲 Vodafone"
+    elif [ "$has_swisscom" -gt 0 ]; then
+        result="瑞士 Swisscom"
+    elif [ "$has_bt" -gt 0 ]; then
+        result="英国 BT (英国电信)"
+    elif [ "$has_telefonica" -gt 0 ]; then
+        result="西班牙 Telefonica"
+    elif [ "$has_tele2" -gt 0 ]; then
+        result="欧洲 Tele2"
+    elif [ "$has_liberty" -gt 0 ]; then
+        result="欧洲 Liberty Global"
+    elif [ "$has_turktelekom" -gt 0 ]; then
+        result="土耳其 Turk Telekom"
+    elif [ "$has_turkcell" -gt 0 ]; then
+        result="土耳其 Turkcell"
+    elif [ "$has_telenor" -gt 0 ]; then
+        result="北欧 Telenor"
+    elif [ "$has_kpn" -gt 0 ]; then
+        result="荷兰 KPN"
+    elif [ "$has_proximus" -gt 0 ]; then
+        result="比利时 Proximus"
+    elif [ "$has_a1" -gt 0 ]; then
+        result="奥地利 A1 Telekom"
+    elif [ "$has_init7" -gt 0 ]; then
+        result="瑞士 Init7"
+
+    # ========== 俄罗斯运营商 ==========
+    elif [ "$has_rostelecom" -gt 0 ]; then
+        result="俄罗斯 Rostelecom"
+    elif [ "$has_ttk" -gt 0 ]; then
+        result="俄罗斯 TTK (TransTeleCom)"
+
+    # ========== 中东运营商 ==========
+    elif [ "$has_stc" -gt 0 ]; then
+        result="沙特 STC"
+    elif [ "$has_etisalat" -gt 0 ]; then
+        result="阿联酋 Etisalat"
+    elif [ "$has_du" -gt 0 ]; then
+        result="阿联酋 du"
+    elif [ "$has_zain" -gt 0 ]; then
+        result="中东 Zain"
+    elif [ "$has_ooredoo" -gt 0 ]; then
+        result="中东 Ooredoo"
+    elif [ "$has_bezeq" -gt 0 ]; then
+        result="以色列 Bezeq"
+    elif [ "$has_telecom_eg" -gt 0 ]; then
+        result="埃及 Telecom Egypt"
+
+    # ========== 非洲运营商 ==========
+    elif [ "$has_mtn" -gt 0 ]; then
+        result="非洲 MTN"
+    elif [ "$has_liquid" -gt 0 ]; then
+        result="非洲 Liquid Telecom"
+    elif [ "$has_safaricom" -gt 0 ]; then
+        result="肯尼亚 Safaricom"
+    elif [ "$has_seacom" -gt 0 ]; then
+        result="非洲 SEACOM"
+    elif [ "$has_vodacom" -gt 0 ]; then
+        result="南非 Vodacom"
+    elif [ "$has_maroc" -gt 0 ]; then
+        result="摩洛哥 Maroc Telecom"
+
+    # ========== 拉美运营商 ==========
+    elif [ "$has_telmex" -gt 0 ]; then
+        result="墨西哥 Telmex"
+    elif [ "$has_claro" -gt 0 ]; then
+        result="拉美 Claro"
+    elif [ "$has_vivo" -gt 0 ]; then
+        result="巴西 Vivo"
+    elif [ "$has_oi" -gt 0 ]; then
+        result="巴西 Oi"
+    elif [ "$has_embratel" -gt 0 ]; then
+        result="巴西 Embratel"
+    elif [ "$has_tim_br" -gt 0 ]; then
+        result="巴西 TIM"
+
     else
         result="未识别"
     fi
+
+    # 检测是否经过国际中转（附加信息）
+    # 注意：只检测真正的骨干网/Transit中转，不包括机房自身网络（VPS/云/CDN提供商）
+    if [ "$result" != "未识别" ]; then
+        if echo "$result" | grep -qE "电信|联通|移动|鹏博士|教育网|科技网|长城|阿里云|腾讯云|百度云|华为云"; then
+            [ "$has_ntt" -gt 0 ] && transit="${transit}+NTT "
+            [ "$has_gtt" -gt 0 ] && transit="${transit}+GTT "
+            [ "$has_cogent" -gt 0 ] && transit="${transit}+Cogent "
+            [ "$has_telia" -gt 0 ] && transit="${transit}+Telia "
+            [ "$has_he" -gt 0 ] && transit="${transit}+HE "
+            [ "$has_level3" -gt 0 ] && transit="${transit}+Level3 "
+            [ "$has_pccw" -gt 0 ] && transit="${transit}+PCCW "
+            [ "$has_softbank" -gt 0 ] && transit="${transit}+软银 "
+            [ "$has_zayo" -gt 0 ] && transit="${transit}+Zayo "
+            [ "$has_tata" -gt 0 ] && transit="${transit}+Tata "
+            [ "$has_seabone" -gt 0 ] && transit="${transit}+Seabone "
+            [ "$has_kddi" -gt 0 ] && transit="${transit}+KDDI "
+            [ "$has_hgc" -gt 0 ] && transit="${transit}+HGC "
+            [ "$has_colt" -gt 0 ] && transit="${transit}+Colt "
+            [ "$has_retn" -gt 0 ] && transit="${transit}+RETN "
+            [ "$has_telxius" -gt 0 ] && transit="${transit}+Telxius "
+            [ "$has_hibernia" -gt 0 ] && transit="${transit}+Hibernia "
+        fi
+    fi
+
+    if [ -n "$transit" ]; then
+        transit=$(echo "$transit" | sed 's/ $//')
+        result="${result} [中转: ${transit}]"
+    fi
+
+    # 提取最后一跳的延迟（目标延迟）
+    local latency
+    latency=$(echo "$block" | grep -oE '[0-9]+\.[0-9]+ ms' | tail -1 | sed 's/ ms//')
+    if [ -n "$latency" ]; then
+        result="${result} (${latency}ms)"
+    fi
+
     ROUTE_SUMMARY+=("${no} ${title}: ${result}")
 }
 
 print_route_summary() {
     local log=$1
-    local Yellow="\033[33m" && local Green="\033[32m" && local Blue="\033[34m" && local Reset="\033[0m" && local Bold="\033[1m"
-    echo -e "\n${Bold}============= 线路判断汇总 =============${Reset}" | tee -a $log
+    local Yellow="\033[33m" && local Green="\033[32m" && local Blue="\033[34m"
+    local Cyan="\033[36m" && local Magenta="\033[35m" && local Red="\033[31m" && local White="\033[37m"
+    local Reset="\033[0m" && local Bold="\033[1m"
+    echo -e "\n${Bold}================== 线路判断汇总 ==================${Reset}" | tee -a $log
     for item in "${ROUTE_SUMMARY[@]}"; do
-        local color="$Yellow"
-        echo "$item" | grep -q "联通" && color="$Green"
-        echo "$item" | grep -q "移动" && color="$Blue"
+        local color="$White"
+        # 中国运营商/云
+        echo "$item" | grep -qE "电信" && color="$Yellow"
+        echo "$item" | grep -qE "联通" && color="$Green"
+        echo "$item" | grep -qE "移动" && color="$Blue"
+        echo "$item" | grep -qiE "鹏博士|教育网|科技网|长城|阿里云|腾讯云|百度云|华为云" && color="$Yellow"
+        # 日本运营商
+        echo "$item" | grep -qiE "软银|SoftBank|NTT|IIJ|KDDI|BIGLOBE|So-net|FreeBit|JPIX|BBIX" && color="$Magenta"
+        # 香港运营商
+        echo "$item" | grep -qiE "PCCW|HGC|HKBN|HKT|HKIX" && color="$Cyan"
+        # 台湾运营商
+        echo "$item" | grep -qiE "HiNet|Seednet|远传|TWM|FETnet|APTG|TBC" && color="$Cyan"
+        # 韩国
+        echo "$item" | grep -qiE "韩国|KINX" && color="$Cyan"
+        # 东南亚/大洋洲/新西兰
+        echo "$item" | grep -qiE "Singtel|StarHub|MyRepublic|Telstra|Optus|TPG|Vocus|Spark|越南|泰国|菲律宾|印尼|新加坡|澳洲|新西兰" && color="$Cyan"
+        # 印度
+        echo "$item" | grep -qiE "印度|Jio|Airtel|BSNL|VSNL|MTNL" && color="$Cyan"
+        # 全球骨干
+        echo "$item" | grep -qiE "GTT|Cogent|HE |Level3|Lumen|Telia|Arelion|Zayo|Tata Comm|Seabone|Sparkle|Colt|euNetworks|IX Reach|RETN|Hibernia|PacketFabric" && color="$Red"
+        # IX 交换中心
+        echo "$item" | grep -qiE "DE-CIX|AMS-IX|LINX|Equinix IX|Megaport" && color="$Red"
+        # 云/CDN
+        echo "$item" | grep -qiE "Zenlayer|AWS|GCP|Azure|Cloudflare|Akamai|Fastly|Edgecast|Edgio|Oracle Cloud|DigitalOcean|Vultr|Choopa|Linode|OVH|Hetzner|Scaleway" && color="$Magenta"
+        # 美国/加拿大运营商
+        echo "$item" | grep -qiE "AT&T|Verizon|Sprint|Charter|Spectrum|Comcast|Windstream|Rogers|Telus" && color="$Red"
+        # 欧洲运营商
+        echo "$item" | grep -qiE "DTAG|Orange|Vodafone|Swisscom|BT |Telefonica|Tele2|Liberty|Turk|Turkcell|Telenor|KPN|Proximus|A1 Telekom|Init7" && color="$Magenta"
+        # 俄罗斯/中东/非洲/拉美
+        echo "$item" | grep -qiE "Rostelecom|TTK|STC|Etisalat|du |Zain|Ooredoo|Bezeq|Egypt|MTN|Liquid|Safaricom|SEACOM|Vodacom|Maroc|Telmex|Claro|Vivo|Oi |Embratel|TIM" && color="$Cyan"
+        # 未识别
+        echo "$item" | grep -q "未识别" && color="$White"
         echo -e "${color}  $item${Reset}" | tee -a $log
     done
-    echo -e "${Bold}========================================${Reset}\n" | tee -a $log
+    echo -e "${Bold}==================================================${Reset}" | tee -a $log
+    echo -e "${Bold}颜色说明: ${Yellow}中国${Reset} ${Green}联通${Reset} ${Blue}移动${Reset} ${Magenta}日本/欧洲/云CDN${Reset} ${Cyan}亚太/其他${Reset} ${Red}骨干/IX/北美${Reset}" | tee -a $log
+    echo "" | tee -a $log
     ROUTE_SUMMARY=()
 }
 # ======= 线路判断函数结束 =======
