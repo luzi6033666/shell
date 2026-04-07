@@ -34,8 +34,13 @@ fi
 
 #定义参数
 sh_ver="2026.01.14_07"
-filepath=$(cd "$(dirname "$0")"; pwd)
+# 当通过管道/进程替换运行时，$0可能是/dev/fd/63，需要回退到/tmp
+filepath=$(cd "$(dirname "$0")" 2>/dev/null; pwd)
 file=$(echo -e "${filepath}"|awk -F "$0" '{print $1}')
+if [[ "$filepath" == /dev/* ]] || [[ "$filepath" == /proc/* ]] || [ ! -d "$filepath" ]; then
+    filepath="/tmp"
+    file="/tmp/"
+fi
 BestTrace_dir="${file}/BestTrace"
 BestTrace_file="${file}/BestTrace/besttrace_IP"
 Nexttrace_dir="${file}/Nexttrace"
