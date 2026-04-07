@@ -780,26 +780,10 @@ statistics_of_run-times() {
     fi
 }
 
-#脚本版本更新
+#脚本版本更新（已改为从自有仓库管理，跳过原作者仓库的版本检查）
 checkver() {
-    running_version="$sh_ver"
-    curl -L "https://raw.githubusercontent.com/Chennhaoo/Shell_Bash/master/AutoTrace.sh" -o AutoTrace_update.sh && chmod 777 AutoTrace_update.sh
-    downloaded_version=$(grep -m1 '^sh_ver=' AutoTrace_update.sh | sed 's/sh_ver="\(.*\)"/\1/')
-    echo -e "${Info} 本地脚本版本为：${running_version} "
-    echo -e "${Info} 最新脚本版本为：${downloaded_version} "
-    if [ "$running_version" != "$downloaded_version" ]; then
-        echo -e "${Info} 更新脚本从 ${running_version} 到 ${downloaded_version}"
-        # 如果是通过管道/进程替换运行，更新到临时路径
-        local script_path="$0"
-        if [ ! -f "$script_path" ] || [[ "$script_path" == /dev/* ]] || [[ "$script_path" == /proc/* ]]; then
-            script_path="/tmp/AutoTrace.sh"
-        fi
-        mv AutoTrace_update.sh "$script_path"
-        exec bash "$script_path"
-    else
-        echo -e "${Info} 本脚本已是最新，脚本无需更新 ！"
-        rm -rf AutoTrace_update.sh*
-    fi
+    echo -e "${Info} 本地脚本版本为：${sh_ver} "
+    echo -e "${Info} 脚本由自有仓库管理，跳过自动更新检查 ！"
 }
 
 #检测IPv4、IPv6状态
