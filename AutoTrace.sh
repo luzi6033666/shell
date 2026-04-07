@@ -1157,14 +1157,25 @@ NT_IPv4_IP_EN_Mtr(){
     #开始测试IPv4库回程路由，第5个块是表示节点序号的，增删节点都要修改
     clear    
  	NT_Ipv4_mtr_EN "${IPv4_1}" "${Net_Mode}" "${Hop_Mode}" "${IPv4_1_name}" "No:1/9"
+    judge_route "$log" "${IPv4_1_name}" "No:1/9"
     NT_Ipv4_mtr_EN "${IPv4_2}" "${Net_Mode}" "${Hop_Mode}" "${IPv4_2_name}" "No:2/9"
+    judge_route "$log" "${IPv4_2_name}" "No:2/9"
     NT_Ipv4_mtr_EN "${IPv4_3}" "${Net_Mode}" "${Hop_Mode}" "${IPv4_3_name}" "No:3/9"
+    judge_route "$log" "${IPv4_3_name}" "No:3/9"
     NT_Ipv4_mtr_EN "${IPv4_4}" "${Net_Mode}" "${Hop_Mode}" "${IPv4_4_name}" "No:4/9"
+    judge_route "$log" "${IPv4_4_name}" "No:4/9"
     NT_Ipv4_mtr_EN "${IPv4_5}" "${Net_Mode}" "${Hop_Mode}" "${IPv4_5_name}" "No:5/9"
+    judge_route "$log" "${IPv4_5_name}" "No:5/9"
     NT_Ipv4_mtr_EN "${IPv4_6}" "${Net_Mode}" "${Hop_Mode}" "${IPv4_6_name}" "No:6/9"
+    judge_route "$log" "${IPv4_6_name}" "No:6/9"
     NT_Ipv4_mtr_EN "${IPv4_7}" "${Net_Mode}" "${Hop_Mode}" "${IPv4_7_name}" "No:7/9"
+    judge_route "$log" "${IPv4_7_name}" "No:7/9"
     NT_Ipv4_mtr_EN "${IPv4_8}" "${Net_Mode}" "${Hop_Mode}" "${IPv4_8_name}" "No:8/9"
+    judge_route "$log" "${IPv4_8_name}" "No:8/9"
     NT_Ipv4_mtr_EN "${IPv4_9}" "${Net_Mode}" "${Hop_Mode}" "${IPv4_9_name}" "No:9/9"
+    judge_route "$log" "${IPv4_9_name}" "No:9/9"
+    #输出线路判断汇总
+    print_route_summary "$log"
     #保留IPv4回程路由日志
     echo -e "${Info} 回程路由路径已保存在${Green_font_prefix} ${log} ${Font_color_suffix}中，如不需要请自行删除 !" 	
     #删除Nexttrace执行文件
@@ -1236,14 +1247,25 @@ NT_IPv6_IP_CN_Mtr(){
     #开始测试IPv6库回程路由，第5个块是表示节点序号的，增删节点都要修改
     clear    
  	NT_Ipv6_mtr_CN "${IPv6_1}" "${Net_Mode}" "${Hop_Mode}" "${IPv6_1_name}" "No:1/9"
+    judge_route "$log" "${IPv6_1_name}" "No:1/9"
     NT_Ipv6_mtr_CN "${IPv6_2}" "${Net_Mode}" "${Hop_Mode}" "${IPv6_2_name}" "No:2/9"
+    judge_route "$log" "${IPv6_2_name}" "No:2/9"
     NT_Ipv6_mtr_CN "${IPv6_3}" "${Net_Mode}" "${Hop_Mode}" "${IPv6_3_name}" "No:3/9" 
+    judge_route "$log" "${IPv6_3_name}" "No:3/9"
     NT_Ipv6_mtr_CN "${IPv6_4}" "${Net_Mode}" "${Hop_Mode}" "${IPv6_4_name}" "No:4/9" 
+    judge_route "$log" "${IPv6_4_name}" "No:4/9"
     NT_Ipv6_mtr_CN "${IPv6_5}" "${Net_Mode}" "${Hop_Mode}" "${IPv6_5_name}" "No:5/9" 
+    judge_route "$log" "${IPv6_5_name}" "No:5/9"
     NT_Ipv6_mtr_CN "${IPv6_6}" "${Net_Mode}" "${Hop_Mode}" "${IPv6_6_name}" "No:6/9" 
+    judge_route "$log" "${IPv6_6_name}" "No:6/9"
     NT_Ipv6_mtr_CN "${IPv6_7}" "${Net_Mode}" "${Hop_Mode}" "${IPv6_7_name}" "No:7/9" 
+    judge_route "$log" "${IPv6_7_name}" "No:7/9"
     NT_Ipv6_mtr_CN "${IPv6_8}" "${Net_Mode}" "${Hop_Mode}" "${IPv6_8_name}" "No:8/9" 
+    judge_route "$log" "${IPv6_8_name}" "No:8/9"
     NT_Ipv6_mtr_CN "${IPv6_9}" "${Net_Mode}" "${Hop_Mode}" "${IPv6_9_name}" "No:9/9" 
+    judge_route "$log" "${IPv6_9_name}" "No:9/9"
+    #输出线路判断汇总
+    print_route_summary "$log"
     #保留IPv6回程路由日志
     echo -e "${Info} 回程路由路径已保存在${Green_font_prefix} ${log} ${Font_color_suffix}中，如不需要请自行删除 !" 	
     #删除Nexttrace执行文件
@@ -1284,14 +1306,25 @@ NT_IPv6_IP_EN_Mtr(){
     #开始测试IPv6库回程路由，第5个块是表示节点序号的，增删节点都要修改
     clear  
  	NT_Ipv6_mtr_EN "${IPv6_1}" "${Net_Mode}" "${Hop_Mode}" "${IPv6_1_name}" "No:1/9"
+    judge_route "$log" "${IPv6_1_name}" "No:1/9"
     NT_Ipv6_mtr_EN "${IPv6_2}" "${Net_Mode}" "${Hop_Mode}" "${IPv6_2_name}" "No:2/9"
+    judge_route "$log" "${IPv6_2_name}" "No:2/9"
     NT_Ipv6_mtr_EN "${IPv6_3}" "${Net_Mode}" "${Hop_Mode}" "${IPv6_3_name}" "No:3/9"  
+    judge_route "$log" "${IPv6_3_name}" "No:3/9"
     NT_Ipv6_mtr_EN "${IPv6_4}" "${Net_Mode}" "${Hop_Mode}" "${IPv6_4_name}" "No:4/9" 
+    judge_route "$log" "${IPv6_4_name}" "No:4/9"
     NT_Ipv6_mtr_EN "${IPv6_5}" "${Net_Mode}" "${Hop_Mode}" "${IPv6_5_name}" "No:5/9" 
+    judge_route "$log" "${IPv6_5_name}" "No:5/9"
     NT_Ipv6_mtr_EN "${IPv6_6}" "${Net_Mode}" "${Hop_Mode}" "${IPv6_6_name}" "No:6/9" 
+    judge_route "$log" "${IPv6_6_name}" "No:6/9"
     NT_Ipv6_mtr_EN "${IPv6_7}" "${Net_Mode}" "${Hop_Mode}" "${IPv6_7_name}" "No:7/9" 
+    judge_route "$log" "${IPv6_7_name}" "No:7/9"
     NT_Ipv6_mtr_EN "${IPv6_8}" "${Net_Mode}" "${Hop_Mode}" "${IPv6_8_name}" "No:8/9" 
+    judge_route "$log" "${IPv6_8_name}" "No:8/9"
     NT_Ipv6_mtr_EN "${IPv6_9}" "${Net_Mode}" "${Hop_Mode}" "${IPv6_9_name}" "No:9/9" 
+    judge_route "$log" "${IPv6_9_name}" "No:9/9"
+    #输出线路判断汇总
+    print_route_summary "$log"
     #保留IPv6回程路由日志
     echo -e "${Info} 回程路由路径已保存在${Green_font_prefix} ${log} ${Font_color_suffix}中，如不需要请自行删除 !" 	
     #删除Nexttrace执行文件
