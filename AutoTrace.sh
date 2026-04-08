@@ -638,38 +638,38 @@ print_route_summary() {
         local route=$(echo "$item" | cut -d'|' -f3)
         local latency=$(echo "$item" | cut -d'|' -f4)
 
-        # 目标着色（根据目标运营商）
+        # 目标着色（根据目标运营商）—— 黄/青/蓝
         local tgt_color="$White"
         echo "$target" | grep -qE "电信" && tgt_color="$Yellow"
-        echo "$target" | grep -qE "联通" && tgt_color="$Green"
+        echo "$target" | grep -qE "联通" && tgt_color="$Cyan"
         echo "$target" | grep -qE "移动" && tgt_color="$Blue"
 
-        # 线路着色（根据回程线路）
+        # 线路着色（根据回程线路）—— 运营商同上，其他类别用洋红/白/红
         local rt_color="$White"
         echo "$route" | grep -qE "电信" && rt_color="$Yellow"
-        echo "$route" | grep -qE "联通" && rt_color="$Green"
+        echo "$route" | grep -qE "联通" && rt_color="$Cyan"
         echo "$route" | grep -qE "移动" && rt_color="$Blue"
         echo "$route" | grep -qiE "鹏博士|教育网|科技网|长城|阿里云|腾讯云|百度云|华为云" && rt_color="$Yellow"
         echo "$route" | grep -qiE "软银|SoftBank|NTT|IIJ|KDDI|BIGLOBE|So-net|FreeBit|JPIX|BBIX" && rt_color="$Magenta"
-        echo "$route" | grep -qiE "PCCW|HGC|HKBN|HKT|HKIX" && rt_color="$Cyan"
-        echo "$route" | grep -qiE "HiNet|Seednet|远传|TWM|FETnet|APTG|TBC" && rt_color="$Cyan"
-        echo "$route" | grep -qiE "韩国|KINX" && rt_color="$Cyan"
-        echo "$route" | grep -qiE "Singtel|StarHub|MyRepublic|Telstra|Optus|TPG|Vocus|Spark|越南|泰国|菲律宾|印尼|新加坡|澳洲|新西兰" && rt_color="$Cyan"
-        echo "$route" | grep -qiE "印度|Jio|Airtel|BSNL|VSNL|MTNL" && rt_color="$Cyan"
+        echo "$route" | grep -qiE "PCCW|HGC|HKBN|HKT|HKIX" && rt_color="$Magenta"
+        echo "$route" | grep -qiE "HiNet|Seednet|远传|TWM|FETnet|APTG|TBC" && rt_color="$Magenta"
+        echo "$route" | grep -qiE "韩国|KINX" && rt_color="$Magenta"
+        echo "$route" | grep -qiE "Singtel|StarHub|MyRepublic|Telstra|Optus|TPG|Vocus|Spark|越南|泰国|菲律宾|印尼|新加坡|澳洲|新西兰" && rt_color="$Magenta"
+        echo "$route" | grep -qiE "印度|Jio|Airtel|BSNL|VSNL|MTNL" && rt_color="$Magenta"
         echo "$route" | grep -qiE "GTT|Cogent|HE |Level3|Lumen|Telia|Arelion|Zayo|Tata Comm|Seabone|Sparkle|Colt|euNetworks|IX Reach|RETN|Hibernia|PacketFabric" && rt_color="$Red"
         echo "$route" | grep -qiE "DE-CIX|AMS-IX|LINX|Equinix IX|Megaport" && rt_color="$Red"
         echo "$route" | grep -qiE "Zenlayer|AWS|GCP|Azure|Cloudflare|Akamai|Fastly|Edgecast|Edgio|Oracle Cloud|DigitalOcean|Vultr|Choopa|Linode|OVH|Hetzner|Scaleway" && rt_color="$Magenta"
         echo "$route" | grep -qiE "AT&T|Verizon|Sprint|Charter|Spectrum|Comcast|Windstream|Rogers|Telus" && rt_color="$Red"
         echo "$route" | grep -qiE "DTAG|Orange|Vodafone|Swisscom|BT |Telefonica|Tele2|Liberty|Turk|Turkcell|Telenor|KPN|Proximus|A1 Telekom|Init7" && rt_color="$Magenta"
-        echo "$route" | grep -qiE "Rostelecom|TTK|STC|Etisalat|du |Zain|Ooredoo|Bezeq|Egypt|MTN|Liquid|Safaricom|SEACOM|Vodacom|Maroc|Telmex|Claro|Vivo|Oi |Embratel|TIM" && rt_color="$Cyan"
+        echo "$route" | grep -qiE "Rostelecom|TTK|STC|Etisalat|du |Zain|Ooredoo|Bezeq|Egypt|MTN|Liquid|Safaricom|SEACOM|Vodacom|Maroc|Telmex|Claro|Vivo|Oi |Embratel|TIM" && rt_color="$Magenta"
         echo "$route" | grep -q "未识别" && rt_color="$White"
 
-        # 延迟着色
+        # 延迟着色 —— 绿/洋红/红（与运营商颜色完全不重叠）
         local lat_color="$Green"
         if [ "$latency" != "-" ]; then
             local lat_int=${latency%%.*}
             [ "$lat_int" -gt 200 ] 2>/dev/null && lat_color="$Red"
-            [ "$lat_int" -le 200 ] 2>/dev/null && [ "$lat_int" -gt 150 ] 2>/dev/null && lat_color="$Yellow"
+            [ "$lat_int" -le 200 ] 2>/dev/null && [ "$lat_int" -gt 150 ] 2>/dev/null && lat_color="$Magenta"
             [ "$lat_int" -le 150 ] 2>/dev/null && lat_color="$Green"
             latency="${latency}ms"
         fi
@@ -678,7 +678,7 @@ print_route_summary() {
     done
 
     echo -e "${Bold}└────────┴──────────────┴──────────────────────┴──────────────┘${Reset}" | tee -a $log
-    echo -e "${Dim}颜色说明: ${Yellow}电信${Reset} ${Green}联通${Reset} ${Blue}移动${Reset} ${Magenta}日本/欧洲/云CDN${Reset} ${Cyan}亚太/其他${Reset} ${Red}骨干/IX/北美${Reset}  ${Dim}延迟: ${Green}<150ms${Reset} ${Yellow}150-200ms${Reset} ${Red}>200ms${Reset}" | tee -a $log
+    echo -e "${Dim}颜色说明: ${Yellow}电信${Reset} ${Cyan}联通${Reset} ${Blue}移动${Reset} ${Magenta}海外/云CDN${Reset} ${Red}骨干/IX${Reset}  ${Dim}延迟: ${Green}<150ms${Reset} ${Magenta}150-200ms${Reset} ${Red}>200ms${Reset}" | tee -a $log
     echo "" | tee -a $log
     ROUTE_SUMMARY=()
 }
