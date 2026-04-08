@@ -612,56 +612,67 @@ judge_route() {
     # 提取最后一跳的延迟（目标延迟）
     local latency
     latency=$(echo "$block" | grep -oE '[0-9]+\.[0-9]+ ms' | tail -1 | sed 's/ ms//')
-    if [ -n "$latency" ]; then
-        result="${result} (${latency}ms)"
-    fi
+    [ -z "$latency" ] && latency="-"
 
-    ROUTE_SUMMARY+=("${no} ${title}: ${result}")
+    # 存储格式: 序号|目标|线路|延迟
+    ROUTE_SUMMARY+=("${no}|${title}|${result}|${latency}")
 }
 
 print_route_summary() {
     local log=$1
     local Yellow="\033[33m" && local Green="\033[32m" && local Blue="\033[34m"
     local Cyan="\033[36m" && local Magenta="\033[35m" && local Red="\033[31m" && local White="\033[37m"
-    local Reset="\033[0m" && local Bold="\033[1m"
-    echo -e "\n${Bold}================== 线路判断汇总 ==================${Reset}" | tee -a $log
+    local Reset="\033[0m" && local Bold="\033[1m" && local Dim="\033[2m"
+
+    echo "" | tee -a $log
+    echo -e "${Bold}┌──────────────────────────────────────────────────────────────┐${Reset}" | tee -a $log
+    echo -e "${Bold}│                      线路判断汇总                          │${Reset}" | tee -a $log
+    echo -e "${Bold}├────────┬──────────────┬──────────────────────┬──────────────┤${Reset}" | tee -a $log
+    echo -e "${Bold}│  序号  │    目标      │        线路          │    延迟      │${Reset}" | tee -a $log
+    echo -e "${Bold}├────────┼──────────────┼──────────────────────┼──────────────┤${Reset}" | tee -a $log
+
     for item in "${ROUTE_SUMMARY[@]}"; do
+        # 解析: 序号|目标|线路|延迟
+        local no=$(echo "$item" | cut -d'|' -f1)
+        local target=$(echo "$item" | cut -d'|' -f2)
+        local route=$(echo "$item" | cut -d'|' -f3)
+        local latency=$(echo "$item" | cut -d'|' -f4)
+
+        # 根据线路着色
         local color="$White"
-        # 中国运营商/云
-        echo "$item" | grep -qE "电信" && color="$Yellow"
-        echo "$item" | grep -qE "联通" && color="$Green"
-        echo "$item" | grep -qE "移动" && color="$Blue"
-        echo "$item" | grep -qiE "鹏博士|教育网|科技网|长城|阿里云|腾讯云|百度云|华为云" && color="$Yellow"
-        # 日本运营商
-        echo "$item" | grep -qiE "软银|SoftBank|NTT|IIJ|KDDI|BIGLOBE|So-net|FreeBit|JPIX|BBIX" && color="$Magenta"
-        # 香港运营商
-        echo "$item" | grep -qiE "PCCW|HGC|HKBN|HKT|HKIX" && color="$Cyan"
-        # 台湾运营商
-        echo "$item" | grep -qiE "HiNet|Seednet|远传|TWM|FETnet|APTG|TBC" && color="$Cyan"
-        # 韩国
-        echo "$item" | grep -qiE "韩国|KINX" && color="$Cyan"
-        # 东南亚/大洋洲/新西兰
-        echo "$item" | grep -qiE "Singtel|StarHub|MyRepublic|Telstra|Optus|TPG|Vocus|Spark|越南|泰国|菲律宾|印尼|新加坡|澳洲|新西兰" && color="$Cyan"
-        # 印度
-        echo "$item" | grep -qiE "印度|Jio|Airtel|BSNL|VSNL|MTNL" && color="$Cyan"
-        # 全球骨干
-        echo "$item" | grep -qiE "GTT|Cogent|HE |Level3|Lumen|Telia|Arelion|Zayo|Tata Comm|Seabone|Sparkle|Colt|euNetworks|IX Reach|RETN|Hibernia|PacketFabric" && color="$Red"
-        # IX 交换中心
-        echo "$item" | grep -qiE "DE-CIX|AMS-IX|LINX|Equinix IX|Megaport" && color="$Red"
-        # 云/CDN
-        echo "$item" | grep -qiE "Zenlayer|AWS|GCP|Azure|Cloudflare|Akamai|Fastly|Edgecast|Edgio|Oracle Cloud|DigitalOcean|Vultr|Choopa|Linode|OVH|Hetzner|Scaleway" && color="$Magenta"
-        # 美国/加拿大运营商
-        echo "$item" | grep -qiE "AT&T|Verizon|Sprint|Charter|Spectrum|Comcast|Windstream|Rogers|Telus" && color="$Red"
-        # 欧洲运营商
-        echo "$item" | grep -qiE "DTAG|Orange|Vodafone|Swisscom|BT |Telefonica|Tele2|Liberty|Turk|Turkcell|Telenor|KPN|Proximus|A1 Telekom|Init7" && color="$Magenta"
-        # 俄罗斯/中东/非洲/拉美
-        echo "$item" | grep -qiE "Rostelecom|TTK|STC|Etisalat|du |Zain|Ooredoo|Bezeq|Egypt|MTN|Liquid|Safaricom|SEACOM|Vodacom|Maroc|Telmex|Claro|Vivo|Oi |Embratel|TIM" && color="$Cyan"
-        # 未识别
-        echo "$item" | grep -q "未识别" && color="$White"
-        echo -e "${color}  $item${Reset}" | tee -a $log
+        echo "$route" | grep -qE "电信" && color="$Yellow"
+        echo "$route" | grep -qE "联通" && color="$Green"
+        echo "$route" | grep -qE "移动" && color="$Blue"
+        echo "$route" | grep -qiE "鹏博士|教育网|科技网|长城|阿里云|腾讯云|百度云|华为云" && color="$Yellow"
+        echo "$route" | grep -qiE "软银|SoftBank|NTT|IIJ|KDDI|BIGLOBE|So-net|FreeBit|JPIX|BBIX" && color="$Magenta"
+        echo "$route" | grep -qiE "PCCW|HGC|HKBN|HKT|HKIX" && color="$Cyan"
+        echo "$route" | grep -qiE "HiNet|Seednet|远传|TWM|FETnet|APTG|TBC" && color="$Cyan"
+        echo "$route" | grep -qiE "韩国|KINX" && color="$Cyan"
+        echo "$route" | grep -qiE "Singtel|StarHub|MyRepublic|Telstra|Optus|TPG|Vocus|Spark|越南|泰国|菲律宾|印尼|新加坡|澳洲|新西兰" && color="$Cyan"
+        echo "$route" | grep -qiE "印度|Jio|Airtel|BSNL|VSNL|MTNL" && color="$Cyan"
+        echo "$route" | grep -qiE "GTT|Cogent|HE |Level3|Lumen|Telia|Arelion|Zayo|Tata Comm|Seabone|Sparkle|Colt|euNetworks|IX Reach|RETN|Hibernia|PacketFabric" && color="$Red"
+        echo "$route" | grep -qiE "DE-CIX|AMS-IX|LINX|Equinix IX|Megaport" && color="$Red"
+        echo "$route" | grep -qiE "Zenlayer|AWS|GCP|Azure|Cloudflare|Akamai|Fastly|Edgecast|Edgio|Oracle Cloud|DigitalOcean|Vultr|Choopa|Linode|OVH|Hetzner|Scaleway" && color="$Magenta"
+        echo "$route" | grep -qiE "AT&T|Verizon|Sprint|Charter|Spectrum|Comcast|Windstream|Rogers|Telus" && color="$Red"
+        echo "$route" | grep -qiE "DTAG|Orange|Vodafone|Swisscom|BT |Telefonica|Tele2|Liberty|Turk|Turkcell|Telenor|KPN|Proximus|A1 Telekom|Init7" && color="$Magenta"
+        echo "$route" | grep -qiE "Rostelecom|TTK|STC|Etisalat|du |Zain|Ooredoo|Bezeq|Egypt|MTN|Liquid|Safaricom|SEACOM|Vodacom|Maroc|Telmex|Claro|Vivo|Oi |Embratel|TIM" && color="$Cyan"
+        echo "$route" | grep -q "未识别" && color="$White"
+
+        # 延迟着色
+        local lat_color="$Green"
+        if [ "$latency" != "-" ]; then
+            local lat_int=${latency%%.*}
+            [ "$lat_int" -gt 200 ] 2>/dev/null && lat_color="$Red"
+            [ "$lat_int" -le 200 ] 2>/dev/null && [ "$lat_int" -gt 150 ] 2>/dev/null && lat_color="$Yellow"
+            [ "$lat_int" -le 150 ] 2>/dev/null && lat_color="$Green"
+            latency="${latency}ms"
+        fi
+
+        echo -e "${Bold}│${Reset} ${Dim}${no}${Reset}  │ ${color}${target}${Reset}  │ ${color}${route}${Reset}  │ ${lat_color}${latency}${Reset}  ${Bold}│${Reset}" | tee -a $log
     done
-    echo -e "${Bold}==================================================${Reset}" | tee -a $log
-    echo -e "${Bold}颜色说明: ${Yellow}中国${Reset} ${Green}联通${Reset} ${Blue}移动${Reset} ${Magenta}日本/欧洲/云CDN${Reset} ${Cyan}亚太/其他${Reset} ${Red}骨干/IX/北美${Reset}" | tee -a $log
+
+    echo -e "${Bold}└────────┴──────────────┴──────────────────────┴──────────────┘${Reset}" | tee -a $log
+    echo -e "${Dim}颜色说明: ${Yellow}电信${Reset} ${Green}联通${Reset} ${Blue}移动${Reset} ${Magenta}日本/欧洲/云CDN${Reset} ${Cyan}亚太/其他${Reset} ${Red}骨干/IX/北美${Reset}  ${Dim}延迟: ${Green}<150ms${Reset} ${Yellow}150-200ms${Reset} ${Red}>200ms${Reset}" | tee -a $log
     echo "" | tee -a $log
     ROUTE_SUMMARY=()
 }
@@ -1275,23 +1286,23 @@ Nexttrace_bit(){
     mkdir -p "${Nexttrace_dir}"
     #开始分版本下载
     if [[ ${bit} == "x64" ]]; then 
-        if ! wget --no-check-certificate -O ${Nexttrace_dir}/nexttrace_IP https://raw.githubusercontent.com/luzi6033666/shell/main/Nexttrace/nexttrace_linux_amd64; then
+        if ! wget -q --no-check-certificate -O ${Nexttrace_dir}/nexttrace_IP https://raw.githubusercontent.com/luzi6033666/shell/main/Nexttrace/nexttrace_linux_amd64; then
             echo -e "${Error} Nexttrace_x64 下载失败 !" && exit 1
         fi
     elif [[ ${bit} == "x86" ]]; then
-        if ! wget --no-check-certificate -O ${Nexttrace_dir}/nexttrace_IP https://raw.githubusercontent.com/luzi6033666/shell/main/Nexttrace/nexttrace_linux_386; then
+        if ! wget -q --no-check-certificate -O ${Nexttrace_dir}/nexttrace_IP https://raw.githubusercontent.com/luzi6033666/shell/main/Nexttrace/nexttrace_linux_386; then
             echo -e "${Error} Nexttrace_x32 下载失败 !" && exit 1
         fi
     elif [[ ${bit} == "aarch64" ]]; then
-        if ! wget --no-check-certificate -O ${Nexttrace_dir}/nexttrace_IP https://raw.githubusercontent.com/luzi6033666/shell/main/Nexttrace/nexttrace_linux_arm64; then
+        if ! wget -q --no-check-certificate -O ${Nexttrace_dir}/nexttrace_IP https://raw.githubusercontent.com/luzi6033666/shell/main/Nexttrace/nexttrace_linux_arm64; then
             echo -e "${Error} Nexttrace_ARM_X64 下载失败 !" && exit 1
         fi
     elif [[ ${bit} == "arm" ]]; then
-        if ! wget --no-check-certificate -O ${Nexttrace_dir}/nexttrace_IP https://raw.githubusercontent.com/luzi6033666/shell/main/Nexttrace/nexttrace_linux_armv7; then
+        if ! wget -q --no-check-certificate -O ${Nexttrace_dir}/nexttrace_IP https://raw.githubusercontent.com/luzi6033666/shell/main/Nexttrace/nexttrace_linux_armv7; then
             echo -e "${Error} Nexttrace_ARM_X32 下载失败 !" && exit 1
         fi
     elif [[ ${bit} == "mips" ]]; then
-        if ! wget --no-check-certificate -O ${Nexttrace_dir}/nexttrace_IP https://raw.githubusercontent.com/luzi6033666/shell/main/Nexttrace/nexttrace_linux_mips; then
+        if ! wget -q --no-check-certificate -O ${Nexttrace_dir}/nexttrace_IP https://raw.githubusercontent.com/luzi6033666/shell/main/Nexttrace/nexttrace_linux_mips; then
             echo -e "${Error} Nexttrace_MIPS 下载失败 !" && exit 1
         fi
     else
@@ -1316,7 +1327,7 @@ Curl_impersonate_Ver(){
 Curl_impersonate_bit(){
     mkdir -p "${Curl_impersonate_dir}"
     #开始配置文件下载
-    if ! wget --no-check-certificate -O ${Curl_impersonate_dir}/curl_chrome116 https://raw.githubusercontent.com/luzi6033666/shell/main/curl-impersonate/curl_chrome116; then
+    if ! wget -q --no-check-certificate -O ${Curl_impersonate_dir}/curl_chrome116 https://raw.githubusercontent.com/luzi6033666/shell/main/curl-impersonate/curl_chrome116; then
         echo -e "${Error} Curl-impersonate 配置文件下载失败 !" && exit 1
     fi
     #检查Curl-impersonate配置文件是否存在
@@ -1327,19 +1338,19 @@ Curl_impersonate_bit(){
     fi
     #开始二进制CURL文件下载
     if [[ ${bit} == "x64" ]]; then 
-        if ! wget --no-check-certificate -O ${Curl_impersonate_dir}/curl-impersonate-chrome https://raw.githubusercontent.com/luzi6033666/shell/main/curl-impersonate/curl-impersonate-chrome_x86_64-linux; then
+        if ! wget -q --no-check-certificate -O ${Curl_impersonate_dir}/curl-impersonate-chrome https://raw.githubusercontent.com/luzi6033666/shell/main/curl-impersonate/curl-impersonate-chrome_x86_64-linux; then
             echo -e "${Error} Curl-impersonate_x64 下载失败 !" && exit 1
         fi
     elif [[ ${bit} == "x86" ]]; then
-        if ! wget --no-check-certificate -O ${Curl_impersonate_dir}/curl-impersonate-chrome https://raw.githubusercontent.com/luzi6033666/shell/main/curl-impersonate/curl-impersonate-chrome_x86_64-linux; then
+        if ! wget -q --no-check-certificate -O ${Curl_impersonate_dir}/curl-impersonate-chrome https://raw.githubusercontent.com/luzi6033666/shell/main/curl-impersonate/curl-impersonate-chrome_x86_64-linux; then
             echo -e "${Error} Curl-impersonate_x32 下载失败 !" && exit 1
         fi
     elif [[ ${bit} == "aarch64" ]]; then
-        if ! wget --no-check-certificate -O ${Curl_impersonate_dir}/curl-impersonate-chrome https://raw.githubusercontent.com/luzi6033666/shell/main/curl-impersonate/curl-impersonate-chrome_aarch64-linux; then
+        if ! wget -q --no-check-certificate -O ${Curl_impersonate_dir}/curl-impersonate-chrome https://raw.githubusercontent.com/luzi6033666/shell/main/curl-impersonate/curl-impersonate-chrome_aarch64-linux; then
             echo -e "${Error} Curl-impersonate_ARM_X64 下载失败 !" && exit 1
         fi
     elif [[ ${bit} == "arm" ]]; then
-        if ! wget --no-check-certificate -O ${Curl_impersonate_dir}/curl-impersonate-chrome https://raw.githubusercontent.com/luzi6033666/shell/main/curl-impersonate/curl-impersonate-chrome_arm-linux; then
+        if ! wget -q --no-check-certificate -O ${Curl_impersonate_dir}/curl-impersonate-chrome https://raw.githubusercontent.com/luzi6033666/shell/main/curl-impersonate/curl-impersonate-chrome_arm-linux; then
             echo -e "${Error} Curl-impersonate_ARM_X32 下载失败 !" && exit 1
         fi
     else
