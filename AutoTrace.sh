@@ -19,7 +19,7 @@ export PATH
 #=================================================
 
 #定义参数
-sh_ver="2026.04.08_01"
+sh_ver="2026.04.11_02"
 # 当通过管道/进程替换运行时，$0可能是/dev/fd/63，需要回退到/tmp
 filepath=$(cd "$(dirname "$0")" 2>/dev/null; pwd)
 file=$(echo -e "${filepath}"|awk -F "$0" '{print $1}')
@@ -32,22 +32,30 @@ Nexttrace_file="${file}/Nexttrace/nexttrace_IP"
 Curl_impersonate_dir="${file}/Curl_impersonate"
 Curl_impersonate_file="${file}/Curl_impersonate/curl_chrome116"
 log="${file}/AutoTrace_Mtr.log"
-true > $log
+: > "$log"
 rep_time=$( date -R )
+PRESERVE_RUNTIME_CACHE="${PRESERVE_RUNTIME_CACHE:-1}"
 
 # 检测 /dev/tty 是否可用，用于 read 输入
-# 定义 _read_input 函数统一处理输入读取
-if [ -c /dev/tty ] 2>/dev/null; then
-    _read_input() { read "$@" < /dev/tty; }
+# 在非交互场景中 /dev/tty 可能存在但不可读，需实际打开验证。
+if { exec 3<> /dev/tty; } 2>/dev/null; then
+    _read_input() { read "$@" <&3; }
 else
     _read_input() { read "$@"; }
 fi
+
+safe_clear() {
+    if [ -t 1 ] && [ -n "${TERM:-}" ]; then
+        clear
+    fi
+}
 
 Green_font_prefix="\033[32m" && Red_font_prefix="\033[31m" && Yellow_font_prefix="\033[33m" && Green_background_prefix="\033[42;37m" && Red_background_prefix="\033[41;37m" && Font_color_suffix="\033[0m"
 
 
 # ======= Nexttrace POW Provider 检测 =======
 NT_POW_ARGS=""
+CURL_IMPERSONATE_AVAILABLE=1
 nexttrace_detect_pow() {
     local Blue="\033[34m" && local Reset="\033[0m"
     echo -e "${Blue}[检测] 正在检测 NextTrace API 可用性...${Reset}"
@@ -95,7 +103,59 @@ judge_route() {
     local has_as58453=$(echo "$block" | grep -ci "AS58453")
     local has_as58807=$(echo "$block" | grep -ci "AS58807\|223\.118\.")
     local has_as9808=$(echo "$block"  | grep -ci "AS9808\|211\.136\.")
-    local has_as4134=$(echo "$block"  | grep -ci "AS4134\|CHINANET")
+    local has_as4134=$(echo "$block"  | grep -ci "AS4134")
+    local has_ct_local=$(echo "$block" | grep -ci "AS4812\|AS4811\|AS4816\|AS4847\|CHINANET\|chinatelecom")
+
+    # ---- 中国三网末跳位置（按最后命中跳判断，避免中途过境导致误判） ----
+    local pos_ct_5943=$(echo "$block"   | grep -Ein "59\.43\." | tail -1 | cut -d: -f1)
+    local pos_ct_20297=$(echo "$block"  | grep -Ein "202\.97\." | tail -1 | cut -d: -f1)
+    local pos_ct_4134=$(echo "$block"   | grep -Ein "AS4134" | tail -1 | cut -d: -f1)
+    local pos_ct_local=$(echo "$block"  | grep -Ein "AS4812|AS4811|AS4816|AS4847|CHINANET|chinatelecom" | tail -1 | cut -d: -f1)
+    local pos_cu_10099=$(echo "$block"  | grep -Ein "AS10099" | tail -1 | cut -d: -f1)
+    local pos_cu_9929=$(echo "$block"   | grep -Ein "AS9929|210\.51\." | tail -1 | cut -d: -f1)
+    local pos_cu_4837=$(echo "$block"   | grep -Ein "AS4837|219\.158\." | tail -1 | cut -d: -f1)
+    local pos_cm_58807=$(echo "$block"  | grep -Ein "AS58807|223\.118\." | tail -1 | cut -d: -f1)
+    local pos_cm_58453=$(echo "$block"  | grep -Ein "AS58453" | tail -1 | cut -d: -f1)
+    local pos_cm_9808=$(echo "$block"   | grep -Ein "AS9808|211\.136\." | tail -1 | cut -d: -f1)
+
+    pos_ct_5943=${pos_ct_5943:-0}
+    pos_ct_20297=${pos_ct_20297:-0}
+    pos_ct_4134=${pos_ct_4134:-0}
+    pos_ct_local=${pos_ct_local:-0}
+    pos_cu_10099=${pos_cu_10099:-0}
+    pos_cu_9929=${pos_cu_9929:-0}
+    pos_cu_4837=${pos_cu_4837:-0}
+    pos_cm_58807=${pos_cm_58807:-0}
+    pos_cm_58453=${pos_cm_58453:-0}
+    pos_cm_9808=${pos_cm_9808:-0}
+
+    local telecom_pos=$pos_ct_4134
+    [ "$pos_ct_5943" -gt "$telecom_pos" ] && telecom_pos=$pos_ct_5943
+    [ "$pos_ct_20297" -gt "$telecom_pos" ] && telecom_pos=$pos_ct_20297
+    [ "$pos_ct_local" -gt "$telecom_pos" ] && telecom_pos=$pos_ct_local
+
+    local unicom_pos=$pos_cu_4837
+    [ "$pos_cu_9929" -gt "$unicom_pos" ] && unicom_pos=$pos_cu_9929
+    [ "$pos_cu_10099" -gt "$unicom_pos" ] && unicom_pos=$pos_cu_10099
+
+    local mobile_pos=$pos_cm_9808
+    [ "$pos_cm_58453" -gt "$mobile_pos" ] && mobile_pos=$pos_cm_58453
+    [ "$pos_cm_58807" -gt "$mobile_pos" ] && mobile_pos=$pos_cm_58807
+
+    local cn_carrier="none"
+    local cn_last=0
+    if [ "$telecom_pos" -gt "$cn_last" ]; then
+        cn_last=$telecom_pos
+        cn_carrier="telecom"
+    fi
+    if [ "$unicom_pos" -gt "$cn_last" ]; then
+        cn_last=$unicom_pos
+        cn_carrier="unicom"
+    fi
+    if [ "$mobile_pos" -gt "$cn_last" ]; then
+        cn_last=$mobile_pos
+        cn_carrier="mobile"
+    fi
 
     # ---- 中国其他 ----
     local has_drpeng=$(echo "$block"    | grep -ci "AS17964\|drpeng\|Dr\.Peng")
@@ -265,26 +325,53 @@ judge_route() {
     local result
     local transit=""
 
-    # ========== 中国三大运营商线路（优先判断） ==========
-    # 电信
-    if [ "$has_5943" -gt 0 ] && [ "$has_20297" -eq 0 ]; then
-        result="电信 CN2 GIA"
-    elif [ "$has_5943" -gt 0 ] && [ "$has_20297" -gt 0 ]; then
-        result="电信 CN2 GT"
-    elif [ "$has_as4134" -gt 0 ] && [ "$has_5943" -eq 0 ]; then
-        result="电信 163"
-    # 联通
-    elif [ "$has_as10099" -gt 0 ]; then
-        result="联通 AS10099 精品网"
-    elif [ "$has_as9929" -gt 0 ]; then
-        result="联通 AS9929 精品网"
-    elif [ "$has_as4837" -gt 0 ]; then
-        result="联通 169"
-    # 移动
-    elif [ "$has_as58807" -gt 0 ]; then
-        result="移动 CMIN2"
-    elif [ "$has_as58453" -gt 0 ] || [ "$has_as9808" -gt 0 ]; then
-        result="移动 CMI"
+    # ========== 中国三网线路（按路径过程输出，不按目标落点反推） ==========
+    if [ "$cn_last" -gt 0 ]; then
+        local cn_path_raw=""
+        # 联通
+        [ "$pos_cu_10099" -gt 0 ] && cn_path_raw="${cn_path_raw}${pos_cu_10099}|联通10099"$'\n'
+        [ "$pos_cu_9929" -gt 0 ] && cn_path_raw="${cn_path_raw}${pos_cu_9929}|联通9929"$'\n'
+        [ "$pos_cu_4837" -gt 0 ] && cn_path_raw="${cn_path_raw}${pos_cu_4837}|联通4837"$'\n'
+        # 移动
+        [ "$pos_cm_58807" -gt 0 ] && cn_path_raw="${cn_path_raw}${pos_cm_58807}|移动CMIN2"$'\n'
+        [ "$pos_cm_58453" -gt 0 ] && cn_path_raw="${cn_path_raw}${pos_cm_58453}|移动CMI"$'\n'
+        [ "$pos_cm_9808" -gt 0 ] && cn_path_raw="${cn_path_raw}${pos_cm_9808}|移动CMI"$'\n'
+        # 电信
+        [ "$pos_ct_5943" -gt 0 ] && cn_path_raw="${cn_path_raw}${pos_ct_5943}|电信CN2"$'\n'
+        [ "$pos_ct_20297" -gt 0 ] && cn_path_raw="${cn_path_raw}${pos_ct_20297}|电信163"$'\n'
+        [ "$pos_ct_4134" -gt 0 ] && cn_path_raw="${cn_path_raw}${pos_ct_4134}|电信163"$'\n'
+        [ "$pos_ct_local" -gt 0 ] && cn_path_raw="${cn_path_raw}${pos_ct_local}|电信"$'\n'
+
+        local -a path_labels=()
+        local last_label=""
+        while IFS='|' read -r pos label; do
+            [ -z "$label" ] && continue
+            if [ "$label" != "$last_label" ]; then
+                path_labels+=("$label")
+                last_label="$label"
+            fi
+        done < <(printf "%s" "$cn_path_raw" | sed '/^$/d' | sort -n -t'|' -k1,1)
+
+        # 过程线路：去掉尾部“与目标相同运营商”的接入段，只保留骨干过程
+        local target_key=""
+        echo "$title" | grep -q "电信" && target_key="电信"
+        echo "$title" | grep -q "联通" && target_key="联通"
+        echo "$title" | grep -q "移动" && target_key="移动"
+        while [ "${#path_labels[@]}" -gt 1 ] && [ -n "$target_key" ] && [[ "${path_labels[-1]}" == "${target_key}"* ]]; do
+            unset 'path_labels[-1]'
+        done
+
+        local cn_path=""
+        local i
+        for i in "${!path_labels[@]}"; do
+            if [ -z "$cn_path" ]; then
+                cn_path="${path_labels[$i]}"
+            else
+                cn_path="${cn_path}>${path_labels[$i]}"
+            fi
+        done
+
+        [ -n "$cn_path" ] && result="$cn_path" || result="未识别"
     # 中国其他
     elif [ "$has_drpeng" -gt 0 ]; then
         result="鹏博士 Dr.Peng"
@@ -413,7 +500,7 @@ judge_route() {
     elif [ "$has_level3" -gt 0 ]; then
         result="Level3/Lumen (全球骨干)"
     elif [ "$has_telia" -gt 0 ]; then
-        result="Telia/Arelion (欧洲骨干)"
+        result="Telia/Arelion"
     elif [ "$has_zayo" -gt 0 ]; then
         result="Zayo (北美骨干)"
     elif [ "$has_tata" -gt 0 ]; then
@@ -620,16 +707,34 @@ judge_route() {
 
 print_route_summary() {
     local log=$1
-    local Yellow="\033[33m" && local Green="\033[32m" && local Blue="\033[34m"
-    local Cyan="\033[36m" && local Magenta="\033[35m" && local Red="\033[31m" && local White="\033[37m"
     local Reset="\033[0m" && local Bold="\033[1m" && local Dim="\033[2m"
 
+    fit_field() {
+        local text="$1"
+        local max_len="$2"
+        local out
+        if [ "${#text}" -gt "$max_len" ]; then
+            out="${text:0:$((max_len-1))}…"
+        else
+            printf -v out "%-${max_len}s" "$text"
+        fi
+        echo "$out"
+    }
+
+    normalize_route() {
+        local text="$1"
+        text=$(echo "$text" | sed -E 's/[[:space:]]*→[[:space:]]*/>/g; s/[[:space:]]*->[[:space:]]*/>/g; s/[[:space:]]+/ /g; s/^ //; s/ $//')
+        text="${text//联通 169/联通4837}"
+        text="${text//联通169/联通4837}"
+        echo "$text"
+    }
+
     echo "" | tee -a $log
-    echo -e "${Bold}┌──────────────────────────────────────────────────────────────┐${Reset}" | tee -a $log
-    echo -e "${Bold}│                      线路判断汇总                          │${Reset}" | tee -a $log
-    echo -e "${Bold}├────────┬──────────────┬──────────────────────┬──────────────┤${Reset}" | tee -a $log
-    echo -e "${Bold}│  序号  │    目标      │        线路          │    延迟      │${Reset}" | tee -a $log
-    echo -e "${Bold}├────────┼──────────────┼──────────────────────┼──────────────┤${Reset}" | tee -a $log
+    echo -e "${Bold}┌────────┬──────────────┬──────────────────────────────┬──────────┐${Reset}" | tee -a $log
+    echo -e "${Bold}│                  线路判断汇总                           │${Reset}" | tee -a $log
+    echo -e "${Bold}├────────┬──────────────┬──────────────────────────────┬──────────┤${Reset}" | tee -a $log
+    echo -e "${Bold}│ 序号   │ 目标         │ 线路                         │ 延迟     │${Reset}" | tee -a $log
+    echo -e "${Bold}├────────┼──────────────┼──────────────────────────────┼──────────┤${Reset}" | tee -a $log
 
     for item in "${ROUTE_SUMMARY[@]}"; do
         # 解析: 序号|目标|线路|延迟
@@ -638,47 +743,42 @@ print_route_summary() {
         local route=$(echo "$item" | cut -d'|' -f3)
         local latency=$(echo "$item" | cut -d'|' -f4)
 
-        # 目标着色（根据目标运营商）—— 标准色: 黄/青/蓝
-        local tgt_color="$White"
+        route=$(normalize_route "$route")
+
+        local tgt_color="\033[37m"
         echo "$target" | grep -qE "电信" && tgt_color="\033[33m"
         echo "$target" | grep -qE "联通" && tgt_color="\033[36m"
         echo "$target" | grep -qE "移动" && tgt_color="\033[34m"
 
-        # 线路着色（根据回程线路）—— 亮色: 亮黄/亮青/亮蓝/亮白/亮洋红
-        local rt_color="$White"
+        local rt_color="\033[37m"
         echo "$route" | grep -qE "电信" && rt_color="\033[93m"
         echo "$route" | grep -qE "联通" && rt_color="\033[96m"
         echo "$route" | grep -qE "移动" && rt_color="\033[94m"
-        echo "$route" | grep -qiE "鹏博士|教育网|科技网|长城|阿里云|腾讯云|百度云|华为云" && rt_color="\033[93m"
-        echo "$route" | grep -qiE "软银|SoftBank|NTT|IIJ|KDDI|BIGLOBE|So-net|FreeBit|JPIX|BBIX" && rt_color="\033[97m"
-        echo "$route" | grep -qiE "PCCW|HGC|HKBN|HKT|HKIX" && rt_color="\033[97m"
-        echo "$route" | grep -qiE "HiNet|Seednet|远传|TWM|FETnet|APTG|TBC" && rt_color="\033[97m"
-        echo "$route" | grep -qiE "韩国|KINX" && rt_color="\033[97m"
-        echo "$route" | grep -qiE "Singtel|StarHub|MyRepublic|Telstra|Optus|TPG|Vocus|Spark|越南|泰国|菲律宾|印尼|新加坡|澳洲|新西兰" && rt_color="\033[97m"
-        echo "$route" | grep -qiE "印度|Jio|Airtel|BSNL|VSNL|MTNL" && rt_color="\033[97m"
-        echo "$route" | grep -qiE "GTT|Cogent|HE |Level3|Lumen|Telia|Arelion|Zayo|Tata Comm|Seabone|Sparkle|Colt|euNetworks|IX Reach|RETN|Hibernia|PacketFabric" && rt_color="\033[95m"
-        echo "$route" | grep -qiE "DE-CIX|AMS-IX|LINX|Equinix IX|Megaport" && rt_color="\033[95m"
-        echo "$route" | grep -qiE "Zenlayer|AWS|GCP|Azure|Cloudflare|Akamai|Fastly|Edgecast|Edgio|Oracle Cloud|DigitalOcean|Vultr|Choopa|Linode|OVH|Hetzner|Scaleway" && rt_color="\033[97m"
-        echo "$route" | grep -qiE "AT&T|Verizon|Sprint|Charter|Spectrum|Comcast|Windstream|Rogers|Telus" && rt_color="\033[95m"
-        echo "$route" | grep -qiE "DTAG|Orange|Vodafone|Swisscom|BT |Telefonica|Tele2|Liberty|Turk|Turkcell|Telenor|KPN|Proximus|A1 Telekom|Init7" && rt_color="\033[97m"
-        echo "$route" | grep -qiE "Rostelecom|TTK|STC|Etisalat|du |Zain|Ooredoo|Bezeq|Egypt|MTN|Liquid|Safaricom|SEACOM|Vodacom|Maroc|Telmex|Claro|Vivo|Oi |Embratel|TIM" && rt_color="\033[97m"
-        echo "$route" | grep -q "未识别" && rt_color="$White"
+        echo "$route" | grep -qiE "Cogent|Telia|Arelion|GTT|HE|Level3|Lumen|Zayo|Tata|Seabone|Colt|RETN|Hibernia" && [ "$rt_color" = "\033[37m" ] && rt_color="\033[95m"
 
-        # 延迟着色 —— 绿/亮红/红加粗（独占，与运营商/线路颜色完全不重叠）
-        local lat_color="\033[32m"
+        local lat_color="\033[37m"
         if [ "$latency" != "-" ]; then
             local lat_int=${latency%%.*}
-            [ "$lat_int" -gt 200 ] 2>/dev/null && lat_color="\033[1;31m"
-            [ "$lat_int" -le 200 ] 2>/dev/null && [ "$lat_int" -gt 150 ] 2>/dev/null && lat_color="\033[91m"
-            [ "$lat_int" -le 150 ] 2>/dev/null && lat_color="\033[32m"
+            if [ "$lat_int" -gt 200 ] 2>/dev/null; then
+                lat_color="\033[31m"
+            elif [ "$lat_int" -ge 100 ] 2>/dev/null; then
+                lat_color="\033[33m"
+            else
+                lat_color="\033[32m"
+            fi
             latency="${latency}ms"
         fi
 
-        echo -e "${Bold}│${Reset} ${Dim}${no}${Reset}  │ ${tgt_color}${target}${Reset}  │ ${rt_color}${route}${Reset}  │ ${lat_color}${latency}${Reset}  ${Bold}│${Reset}" | tee -a $log
+        no=$(fit_field "$no" 6)
+        target=$(fit_field "$target" 12)
+        route=$(fit_field "$route" 28)
+        latency=$(fit_field "$latency" 8)
+
+        echo -e "│ ${Dim}${no}${Reset} │ ${tgt_color}${target}${Reset} │ ${rt_color}${route}${Reset} │ ${lat_color}${latency}${Reset} │" | tee -a "$log"
     done
 
-    echo -e "${Bold}└────────┴──────────────┴──────────────────────┴──────────────┘${Reset}" | tee -a $log
-    echo -e "${Dim}目标: \033[33m电信${Reset} \033[36m联通${Reset} \033[34m移动${Reset}  ${Dim}线路: \033[93m电信${Reset} \033[96m联通${Reset} \033[94m移动${Reset} \033[97m海外${Reset} \033[95m骨干${Reset}  ${Dim}延迟: \033[32m<150ms${Reset} \033[91m150-200ms${Reset} \033[1;31m>200ms${Reset}" | tee -a $log
+    echo -e "${Bold}└────────┴──────────────┴──────────────────────────────┴──────────┘${Reset}" | tee -a $log
+    echo -e "${Dim}目标: \033[33m电信${Reset} \033[36m联通${Reset} \033[34m移动${Reset}  ${Dim}线路: \033[93m电信${Reset} \033[96m联通${Reset} \033[94m移动${Reset} \033[95m骨干${Reset}  ${Dim}延迟: \033[32m<100ms${Reset} \033[33m100-200ms${Reset} \033[31m>200ms${Reset}" | tee -a $log
     echo "" | tee -a $log
     ROUTE_SUMMARY=()
 }
@@ -775,6 +875,12 @@ statistics_of_run-times() {
 checkver() {
     local REMOTE_URL="https://raw.githubusercontent.com/luzi6033666/shell/main/AutoTrace.sh"
     local remote_ver
+    local self_path
+    self_path=$(readlink -f "$0" 2>/dev/null || echo "$0")
+    if [[ -z "$self_path" || ! -f "$self_path" || "$self_path" == /dev/* || "$self_path" == /proc/* ]]; then
+        echo -e "${Info} 当前为管道/临时执行，跳过自动覆盖更新。"
+        return
+    fi
     remote_ver=$(curl -sLm10 "$REMOTE_URL" | grep '^sh_ver=' | head -1 | cut -d'"' -f2)
     # If can't fetch or same version, silently skip
     [[ -z "$remote_ver" ]] && return
@@ -785,11 +891,11 @@ checkver() {
     if curl -sLm30 -o "$tmp_file" "$REMOTE_URL" && [[ -s "$tmp_file" ]]; then
         # Verify it's actually a script (starts with shebang)
         if head -1 "$tmp_file" | grep -q '^#!/'; then
-            cp "$tmp_file" "$0"
-            chmod +x "$0"
+            cp "$tmp_file" "$self_path"
+            chmod +x "$self_path"
             rm -f "$tmp_file"
             echo -e "${Info} 已更新到 v${remote_ver}，正在重新启动..."
-            exec bash "$0" "$@"
+            exec bash "$self_path" "$@"
         fi
     fi
     rm -f "$tmp_file"
@@ -813,8 +919,8 @@ map_ip_type() {
 #检测IPv4、IPv6状态
 IP_Check(){
     #通过ping ip.sb这个网站，如果ping通了没有报错，再和后面比较，如果都有输出，则代表网络通的。这个主要用来测试只有IPV4或IPV6的机器是不是有网
-    IPV4_CHECK=$((ping -4 -c 1 -W 4 ip.sb >/dev/null 2>&1 && echo true) || curl -s -m 4 -4 ip-api.com 2> /dev/null)
-    IPV6_CHECK=$((ping -6 -c 1 -W 4 ip.sb >/dev/null 2>&1 && echo true) || curl -s -m 4 -6 ip.sb 2> /dev/null)
+    IPV4_CHECK=$( (ping -4 -c 1 -W 4 ip.sb >/dev/null 2>&1 && echo true) || curl -s -m 4 -4 ip-api.com 2>/dev/null )
+    IPV6_CHECK=$( (ping -6 -c 1 -W 4 ip.sb >/dev/null 2>&1 && echo true) || curl -s -m 4 -6 ip.sb 2>/dev/null )
     if [[ -z "$IPV4_CHECK" && -z "$IPV6_CHECK" ]]; then
         echo -e
         echo -e "${Error} 未检测到 IPv4 和 IPv6 连接，请检查 DNS 问题..." && exit 1 
@@ -847,7 +953,7 @@ IP_Check(){
       Location_4E="$City_4E, $Region_4E ($Region_code_4E)"
       
       #IP欺诈分数，使用https://github.com/lwthiker/curl-impersonate绕过CF
-      if [[ ${bit} == "mips" ]]; then
+      if [[ ${bit} == "mips" || "${CURL_IMPERSONATE_AVAILABLE}" != "1" ]]; then
           FRAUD_SCORE_4="未知"
       else
           FRAUD_SCORE_4_TEMP=$(${Curl_impersonate_file} -m10 -sL -H "Referer: https://scamalytics.com" \
@@ -891,7 +997,7 @@ IP_Check(){
       Location_6E="$City_6E, $Region_6E ($Region_code_6E)"
 
       #IP欺诈分数，使用https://github.com/lwthiker/curl-impersonate绕过CF
-      if [[ ${bit} == "mips" ]]; then
+      if [[ ${bit} == "mips" || "${CURL_IMPERSONATE_AVAILABLE}" != "1" ]]; then
           FRAUD_SCORE_6="未知"
       else
           FRAUD_SCORE_6_TEMP=$(${Curl_impersonate_file} -m10 -sL -H "Referer: https://scamalytics.com" \
@@ -977,6 +1083,7 @@ NT_mtr_CN(){
 #Nexttrace 合并 IPv4/IPv6 回程代码 英文输出 
 NT_mtr_EN(){
     # $1=target $2=mode $3=max_hop $4=name $5=no $6=ip_version(IPv4/IPv6)
+    NT_BLOCK_START=$(( $(wc -l < "$log") + 1 ))
     local ip_ver="${6:-IPv4}"
     if [ "$2" = "tcp" ] || [ "$2" = "TCP" ]; then
         echo -e "\n$5 Traceroute to $4 (TCP Mode, Max $3 Hop, $ip_ver)" | tee -a $log
@@ -1241,26 +1348,43 @@ Nexttrace_Mode(){
 
 #当下目录Nexttrace主程序文件删除（静默删除，仅失败时提示）
 Nexttrace_Dle(){
-    rm -rf "${Nexttrace_dir}"
-    [[ -e ${Nexttrace_dir} ]] && echo -e "${Error} 删除 Nexttrace 文件失败"
+    if [[ "${PRESERVE_RUNTIME_CACHE}" == "1" ]]; then
+        return 0
+    fi
+    rm -rf "${Nexttrace_dir}" || true
+    if [[ -e ${Nexttrace_dir} ]]; then
+        echo -e "${Error} 删除 Nexttrace 文件失败"
+        return 1
+    fi
+    return 0
 }
 
 #当下目录Curl-impersonate主程序文件删除（静默删除，仅失败时提示）
 Curl_impersonate_Dle(){
-    rm -rf "${Curl_impersonate_dir}"
-    [[ -e ${Curl_impersonate_dir} ]] && echo -e "${Error} 删除 Curl-impersonate 文件失败"
+    if [[ "${PRESERVE_RUNTIME_CACHE}" == "1" ]]; then
+        return 0
+    fi
+    rm -rf "${Curl_impersonate_dir}" || true
+    if [[ -e ${Curl_impersonate_dir} ]]; then
+        echo -e "${Error} 删除 Curl-impersonate 文件失败"
+        return 1
+    fi
+    return 0
 }
 
 #删除当前目录下的路由路径文件，共用（静默删除，仅失败时提示）
 Log_Dle(){
-    rm -rf "${log}"
-    [[ -e ${log} ]] && echo -e "${Error} 删除 路由路径 文件失败"
+    rm -rf "${log}" || true
+    if [[ -e ${log} ]]; then
+        echo -e "${Error} 删除 路由路径 文件失败"
+        return 1
+    fi
+    return 0
 }
 
 #前置参数启动
 AutoTrace_Start(){
-    #检测当下目录Nexttrace文件夹，如有则删除
-    Nexttrace_Dle
+    # 保留 Nexttrace 目录用于版本缓存
     #删除当前目录下的路由路径文件
     Log_Dle
     #开始生成本次报告的时间
@@ -1292,23 +1416,23 @@ Nexttrace_bit(){
     mkdir -p "${Nexttrace_dir}"
     #开始分版本下载
     if [[ ${bit} == "x64" ]]; then 
-        if ! wget -q --no-check-certificate -O ${Nexttrace_dir}/nexttrace_IP https://raw.githubusercontent.com/luzi6033666/shell/main/Nexttrace/nexttrace_linux_amd64; then
+        if ! wget -q -O ${Nexttrace_dir}/nexttrace_IP https://raw.githubusercontent.com/luzi6033666/shell/main/Nexttrace/nexttrace_linux_amd64; then
             echo -e "${Error} Nexttrace_x64 下载失败 !" && exit 1
         fi
     elif [[ ${bit} == "x86" ]]; then
-        if ! wget -q --no-check-certificate -O ${Nexttrace_dir}/nexttrace_IP https://raw.githubusercontent.com/luzi6033666/shell/main/Nexttrace/nexttrace_linux_386; then
+        if ! wget -q -O ${Nexttrace_dir}/nexttrace_IP https://raw.githubusercontent.com/luzi6033666/shell/main/Nexttrace/nexttrace_linux_386; then
             echo -e "${Error} Nexttrace_x32 下载失败 !" && exit 1
         fi
     elif [[ ${bit} == "aarch64" ]]; then
-        if ! wget -q --no-check-certificate -O ${Nexttrace_dir}/nexttrace_IP https://raw.githubusercontent.com/luzi6033666/shell/main/Nexttrace/nexttrace_linux_arm64; then
+        if ! wget -q -O ${Nexttrace_dir}/nexttrace_IP https://raw.githubusercontent.com/luzi6033666/shell/main/Nexttrace/nexttrace_linux_arm64; then
             echo -e "${Error} Nexttrace_ARM_X64 下载失败 !" && exit 1
         fi
     elif [[ ${bit} == "arm" ]]; then
-        if ! wget -q --no-check-certificate -O ${Nexttrace_dir}/nexttrace_IP https://raw.githubusercontent.com/luzi6033666/shell/main/Nexttrace/nexttrace_linux_armv7; then
+        if ! wget -q -O ${Nexttrace_dir}/nexttrace_IP https://raw.githubusercontent.com/luzi6033666/shell/main/Nexttrace/nexttrace_linux_armv7; then
             echo -e "${Error} Nexttrace_ARM_X32 下载失败 !" && exit 1
         fi
     elif [[ ${bit} == "mips" ]]; then
-        if ! wget -q --no-check-certificate -O ${Nexttrace_dir}/nexttrace_IP https://raw.githubusercontent.com/luzi6033666/shell/main/Nexttrace/nexttrace_linux_mips; then
+        if ! wget -q -O ${Nexttrace_dir}/nexttrace_IP https://raw.githubusercontent.com/luzi6033666/shell/main/Nexttrace/nexttrace_linux_mips; then
             echo -e "${Error} Nexttrace_MIPS 下载失败 !" && exit 1
         fi
     else
@@ -1333,8 +1457,10 @@ Curl_impersonate_Ver(){
 Curl_impersonate_bit(){
     mkdir -p "${Curl_impersonate_dir}"
     #开始配置文件下载
-    if ! wget -q --no-check-certificate -O ${Curl_impersonate_dir}/curl_chrome116 https://raw.githubusercontent.com/luzi6033666/shell/main/curl-impersonate/curl_chrome116; then
-        echo -e "${Error} Curl-impersonate 配置文件下载失败 !" && exit 1
+    if ! wget -q -O ${Curl_impersonate_dir}/curl_chrome116 https://raw.githubusercontent.com/luzi6033666/shell/main/curl-impersonate/curl_chrome116; then
+        CURL_IMPERSONATE_AVAILABLE=0
+        echo -e "${Tip} Curl-impersonate 配置下载失败，跳过 IP 危险分数探测。" | tee -a "$log"
+        return 0
     fi
     #检查Curl-impersonate配置文件是否存在
     if [[ -e ${Curl_impersonate_file} ]]; then
@@ -1344,20 +1470,26 @@ Curl_impersonate_bit(){
     fi
     #开始二进制CURL文件下载
     if [[ ${bit} == "x64" ]]; then 
-        if ! wget -q --no-check-certificate -O ${Curl_impersonate_dir}/curl-impersonate-chrome https://raw.githubusercontent.com/luzi6033666/shell/main/curl-impersonate/curl-impersonate-chrome_x86_64-linux; then
-            echo -e "${Error} Curl-impersonate_x64 下载失败 !" && exit 1
+        if ! wget -q -O ${Curl_impersonate_dir}/curl-impersonate-chrome https://raw.githubusercontent.com/luzi6033666/shell/main/curl-impersonate/curl-impersonate-chrome_x86_64-linux; then
+            CURL_IMPERSONATE_AVAILABLE=0
+            echo -e "${Tip} Curl-impersonate_x64 下载失败，跳过 IP 危险分数探测。" | tee -a "$log"
+            return 0
         fi
     elif [[ ${bit} == "x86" ]]; then
-        if ! wget -q --no-check-certificate -O ${Curl_impersonate_dir}/curl-impersonate-chrome https://raw.githubusercontent.com/luzi6033666/shell/main/curl-impersonate/curl-impersonate-chrome_x86_64-linux; then
-            echo -e "${Error} Curl-impersonate_x32 下载失败 !" && exit 1
-        fi
+        CURL_IMPERSONATE_AVAILABLE=0
+        echo -e "${Tip} x86 架构暂不提供 curl-impersonate 二进制，IP 危险分数将显示未知。" | tee -a "$log"
+        return 0
     elif [[ ${bit} == "aarch64" ]]; then
-        if ! wget -q --no-check-certificate -O ${Curl_impersonate_dir}/curl-impersonate-chrome https://raw.githubusercontent.com/luzi6033666/shell/main/curl-impersonate/curl-impersonate-chrome_aarch64-linux; then
-            echo -e "${Error} Curl-impersonate_ARM_X64 下载失败 !" && exit 1
+        if ! wget -q -O ${Curl_impersonate_dir}/curl-impersonate-chrome https://raw.githubusercontent.com/luzi6033666/shell/main/curl-impersonate/curl-impersonate-chrome_aarch64-linux; then
+            CURL_IMPERSONATE_AVAILABLE=0
+            echo -e "${Tip} Curl-impersonate_ARM_X64 下载失败，跳过 IP 危险分数探测。" | tee -a "$log"
+            return 0
         fi
     elif [[ ${bit} == "arm" ]]; then
-        if ! wget -q --no-check-certificate -O ${Curl_impersonate_dir}/curl-impersonate-chrome https://raw.githubusercontent.com/luzi6033666/shell/main/curl-impersonate/curl-impersonate-chrome_arm-linux; then
-            echo -e "${Error} Curl-impersonate_ARM_X32 下载失败 !" && exit 1
+        if ! wget -q -O ${Curl_impersonate_dir}/curl-impersonate-chrome https://raw.githubusercontent.com/luzi6033666/shell/main/curl-impersonate/curl-impersonate-chrome_arm-linux; then
+            CURL_IMPERSONATE_AVAILABLE=0
+            echo -e "${Tip} Curl-impersonate_ARM_X32 下载失败，跳过 IP 危险分数探测。" | tee -a "$log"
+            return 0
         fi
     else
         echo -e "${Error} 无法受支持的系统 !" && exit 1
@@ -1366,14 +1498,16 @@ Curl_impersonate_bit(){
     if [[ -e ${Curl_impersonate_dir}/curl-impersonate-chrome ]]; then
         chmod +x "${Curl_impersonate_dir}/curl-impersonate-chrome"
     else
-        echo -e "${Error} 未检测到 Curl-impersonate二进制文件，请查看 ${Curl_impersonate_dir}/curl-impersonate-chrome 目录文件是否存在!" && exit 1       
+        CURL_IMPERSONATE_AVAILABLE=0
+        echo -e "${Tip} 未检测到 Curl-impersonate 二进制，跳过 IP 危险分数探测。" | tee -a "$log"
+        return 0
     fi
 }
 ###到指定IP路由测试部分    开始========================================================
 
 #到指定IP路由测试 主菜单
 Specify_IP(){
-	clear
+	safe_clear
 echo -e " 请选择需要的测试项（TCP Mode）
 ————————————————————————————————————
 ${Green_font_prefix} 1. ${Font_color_suffix}本机到指定 IPv4 路由 中文 输出 Nexttrace库（可指定端口）
@@ -1458,7 +1592,7 @@ Check_Int_IPV4(){
     PING_IPV4_CHECK=$(ping -4 -c 4 -W 4 "${Int_IPV4_IP}" >/dev/null 2>&1 && echo true) 
     if [[ -z "${PING_IPV4_CHECK}" ]]; then
         echo -e
-        echo -e "${Error} 输入的${Green_font_prefix}${Int_IPV4_IP}${Font_color_suffix}不是有效的 IPv4 地址，或无法 Ping 通，是否忽略错误继续？[y/N]" && echo
+        echo -e "${Error} 输入的${Green_font_prefix}${Int_IPV4_IP}${Font_color_suffix}不是有效的 IPv4 地址，或无法 Ping 通，是否忽略错误继续？[Y/n]" && echo
         stty erase '^H' 2>/dev/null; _read_input -p "(默认: y):" unyn
         if [[ ${unyn} == [Nn] ]]; then
             echo && echo -e "${Info} 已取消..." && exit 1
@@ -1477,7 +1611,7 @@ Check_Int_IPV6(){
     PING_IPV6_CHECK=$(ping -6 -c 4 -W 4 "${Int_IPV6_IP}" >/dev/null 2>&1 && echo true) 
     if [[ -z "${PING_IPV6_CHECK}" ]]; then
         echo -e
-        echo -e "${Error} 输入的${Green_font_prefix}${Int_IPV6_IP}${Font_color_suffix}不是有效的 IPv6 地址，或无法 Ping 通，是否忽略错误继续？[y/N]" && echo
+        echo -e "${Error} 输入的${Green_font_prefix}${Int_IPV6_IP}${Font_color_suffix}不是有效的 IPv6 地址，或无法 Ping 通，是否忽略错误继续？[Y/n]" && echo
         stty erase '^H' 2>/dev/null; _read_input -p "(默认: y):" unyn
         if [[ ${unyn} == [Nn] ]]; then
             echo && echo -e "${Info} 已取消..." && exit 1
@@ -1679,14 +1813,14 @@ Specify_IP_AutoTrace(){
 
 
 #脚本运行区
-clear
+safe_clear
 echo -e "${Info} 脚本正在初始化，请稍等 ！"
+check_root
 check_sys
 checkver
 IP_Check
-check_root
 statistics_of_run-times
-clear 
+safe_clear
 [[ ${release} != "debian" ]] && [[ ${release} != "ubuntu" ]] && [[ ${release} != "centos" ]] && echo -e "${Error} 本脚本不支持当前系统 ${release} !" && exit 1
 
 
