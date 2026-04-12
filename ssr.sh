@@ -38,39 +38,52 @@ plain='\033[0m'
 cur_dir=$( pwd )
 software=(Shadowsocks-Python ShadowsocksR Shadowsocks-Go Shadowsocks-libev)
 
+mirror_owner="luzi6033666"
+mirror_repo="shell"
+mirror_branch="main"
+mirror_base_url="https://raw.githubusercontent.com/${mirror_owner}/${mirror_repo}/${mirror_branch}/ssr_assets"
+mirror_dist_url="${mirror_base_url}/dist"
+mirror_init_url="${mirror_base_url}/init"
+
 libsodium_file="libsodium-1.0.16"
-libsodium_url="https://github.com/jedisct1/libsodium/releases/download/1.0.16/libsodium-1.0.16.tar.gz"
+libsodium_url="${mirror_dist_url}/libsodium-1.0.16.tar.gz"
 
 mbedtls_file="mbedtls-2.8.0"
-mbedtls_url="https://tls.mbed.org/download/mbedtls-2.8.0-gpl.tgz"
+mbedtls_url="${mirror_dist_url}/mbedtls-2.8.0-gpl.tgz"
 
 shadowsocks_python_file="shadowsocks-master"
-shadowsocks_python_url="https://github.com/shadowsocks/shadowsocks/archive/master.zip"
+shadowsocks_python_url="${mirror_dist_url}/shadowsocks-master.zip"
 shadowsocks_python_init="/etc/init.d/shadowsocks-python"
 shadowsocks_python_config="/etc/shadowsocks-python/config.json"
-shadowsocks_python_centos="https://raw.githubusercontent.com/teddysun/shadowsocks_install/master/shadowsocks"
-shadowsocks_python_debian="https://raw.githubusercontent.com/teddysun/shadowsocks_install/master/shadowsocks-debian"
+shadowsocks_python_centos="${mirror_init_url}/shadowsocks"
+shadowsocks_python_debian="${mirror_init_url}/shadowsocks-debian"
 
 shadowsocks_r_file="shadowsocksr-3.2.1"
-shadowsocks_r_url="https://github.com/shadowsocksrr/shadowsocksr/archive/3.2.1.tar.gz"
+shadowsocks_r_url="${mirror_dist_url}/shadowsocksr-3.2.1.tar.gz"
 shadowsocks_r_init="/etc/init.d/shadowsocks-r"
 shadowsocks_r_config="/etc/shadowsocks-r/config.json"
-shadowsocks_r_centos="https://raw.githubusercontent.com/teddysun/shadowsocks_install/master/shadowsocksR"
-shadowsocks_r_debian="https://raw.githubusercontent.com/teddysun/shadowsocks_install/master/shadowsocksR-debian"
+shadowsocks_r_centos="${mirror_init_url}/shadowsocksR"
+shadowsocks_r_debian="${mirror_init_url}/shadowsocksR-debian"
 
 shadowsocks_go_file_64="shadowsocks-server-linux64-1.2.1"
-shadowsocks_go_url_64="https://dl.lamp.sh/shadowsocks/shadowsocks-server-linux64-1.2.1.gz"
+shadowsocks_go_url_64="${mirror_dist_url}/shadowsocks-server-linux64-1.2.1.gz"
 shadowsocks_go_file_32="shadowsocks-server-linux32-1.2.1"
-shadowsocks_go_url_32="https://dl.lamp.sh/shadowsocks/shadowsocks-server-linux32-1.2.1.gz"
+shadowsocks_go_url_32="${mirror_dist_url}/shadowsocks-server-linux32-1.2.1.gz"
 shadowsocks_go_init="/etc/init.d/shadowsocks-go"
 shadowsocks_go_config="/etc/shadowsocks-go/config.json"
-shadowsocks_go_centos="https://raw.githubusercontent.com/teddysun/shadowsocks_install/master/shadowsocks-go"
-shadowsocks_go_debian="https://raw.githubusercontent.com/teddysun/shadowsocks_install/master/shadowsocks-go-debian"
+shadowsocks_go_centos="${mirror_init_url}/shadowsocks-go"
+shadowsocks_go_debian="${mirror_init_url}/shadowsocks-go-debian"
 
+shadowsocks_libev_file="shadowsocks-libev-3.3.5"
+shadowsocks_libev_url="${mirror_dist_url}/${shadowsocks_libev_file}.tar.gz"
 shadowsocks_libev_init="/etc/init.d/shadowsocks-libev"
 shadowsocks_libev_config="/etc/shadowsocks-libev/config.json"
-shadowsocks_libev_centos="https://raw.githubusercontent.com/teddysun/shadowsocks_install/master/shadowsocks-libev"
-shadowsocks_libev_debian="https://raw.githubusercontent.com/teddysun/shadowsocks_install/master/shadowsocks-libev-debian"
+shadowsocks_libev_centos="${mirror_init_url}/shadowsocks-libev"
+shadowsocks_libev_debian="${mirror_init_url}/shadowsocks-libev-debian"
+
+simple_obfs_file="simple-obfs-with-submodules"
+simple_obfs_dir="simple-obfs-src"
+simple_obfs_url="${mirror_dist_url}/${simple_obfs_file}.tar.gz"
 
 # Stream Ciphers
 common_ciphers=(
@@ -282,8 +295,7 @@ get_ipv6(){
 }
 
 get_libev_ver(){
-    libev_ver=$(wget --no-check-certificate -qO- https://api.github.com/repos/shadowsocks/shadowsocks-libev/releases/latest | grep 'tag_name' | cut -d\" -f4)
-    [ -z ${libev_ver} ] && echo -e "[${red}Error${plain}] Get shadowsocks-libev latest version failed" && exit 1
+    libev_ver="v3.3.5"
 }
 
 get_opsy(){
@@ -358,10 +370,6 @@ download_files() {
             download "${shadowsocks_go_init}" "${shadowsocks_go_debian}"
         fi
     elif [ "${selected}" == "4" ]; then
-        get_libev_ver
-        shadowsocks_libev_file="shadowsocks-libev-$(echo ${libev_ver} | sed -e 's/^[a-zA-Z]//g')"
-        shadowsocks_libev_url="https://github.com/shadowsocks/shadowsocks-libev/releases/download/${libev_ver}/${shadowsocks_libev_file}.tar.gz"
-
         download "${shadowsocks_libev_file}.tar.gz" "${shadowsocks_libev_url}"
         if check_sys packageManager yum; then
             download "${shadowsocks_libev_init}" "${shadowsocks_libev_centos}"
@@ -976,9 +984,9 @@ install_shadowsocks_libev() {
 install_shadowsocks_libev_obfs() {
     if [ "${libev_obfs}" == "y" ] || [ "${libev_obfs}" == "Y" ]; then
         cd ${cur_dir}
-        git clone https://github.com/shadowsocks/simple-obfs.git
-        cd simple-obfs
-        git submodule update --init --recursive
+        download "${simple_obfs_file}.tar.gz" "${simple_obfs_url}"
+        tar zxf ${simple_obfs_file}.tar.gz
+        cd ${simple_obfs_dir}
         ./autogen.sh
         ./configure --disable-documentation
         make
@@ -1131,7 +1139,7 @@ install_main(){
 
 install_cleanup(){
     cd ${cur_dir}
-    rm -rf simple-obfs
+    rm -rf simple-obfs ${simple_obfs_dir} ${simple_obfs_file}.tar.gz
     rm -rf ${libsodium_file} ${libsodium_file}.tar.gz
     rm -rf ${mbedtls_file} ${mbedtls_file}-gpl.tgz
     rm -rf ${shadowsocks_python_file} ${shadowsocks_python_file}.zip
