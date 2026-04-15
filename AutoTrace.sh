@@ -340,7 +340,7 @@ judge_route() {
         [ "$pos_ct_5943" -gt 0 ] && cn_path_raw="${cn_path_raw}${pos_ct_5943}|电信CN2"$'\n'
         [ "$pos_ct_20297" -gt 0 ] && cn_path_raw="${cn_path_raw}${pos_ct_20297}|电信163"$'\n'
         [ "$pos_ct_4134" -gt 0 ] && cn_path_raw="${cn_path_raw}${pos_ct_4134}|电信163"$'\n'
-        [ "$pos_ct_local" -gt 0 ] && cn_path_raw="${cn_path_raw}${pos_ct_local}|电信"$'\n'
+        # 电信城域网AS(4812/4811/4816/4847)在国际路由中基本不出现，不单独标注
 
         local -a path_labels=()
         local last_label=""
@@ -357,9 +357,11 @@ judge_route() {
         echo "$title" | grep -q "电信" && target_key="电信"
         echo "$title" | grep -q "联通" && target_key="联通"
         echo "$title" | grep -q "移动" && target_key="移动"
-        while [ "${#path_labels[@]}" -gt 1 ] && [ -n "$target_key" ] && [[ "${path_labels[-1]}" == "${target_key}"* ]]; do
-            unset 'path_labels[-1]'
-        done
+        if [ "${#path_labels[@]}" -gt 1 ] && [ -n "$target_key" ]; then
+            while [ "${#path_labels[@]}" -gt 1 ] && [[ "${path_labels[-1]}" == "${target_key}"* ]] && [[ "${path_labels[-2]}" == "${target_key}"* ]]; do
+                unset 'path_labels[-1]'
+            done
+        fi
 
         local cn_path=""
         local i
@@ -370,6 +372,20 @@ judge_route() {
                 cn_path="${cn_path}>${path_labels[$i]}"
             fi
         done
+
+        # 电信线路精确判断：CN2 GIA / CN2 GT
+        local has_cn2_in_path=0 has_163_in_path=0
+        for lbl in "${path_labels[@]}"; do
+            [[ "$lbl" == "电信CN2" ]] && has_cn2_in_path=1
+            [[ "$lbl" == "电信163" || "$lbl" == "电信" ]] && has_163_in_path=1
+        done
+        if [ "$has_cn2_in_path" -eq 1 ] && [ "$has_163_in_path" -eq 1 ]; then
+            cn_path=$(echo "$cn_path" | sed 's/电信163>电信CN2/CN2 GT/g; s/电信CN2>电信163/CN2 GT/g; s/电信>电信CN2/CN2 GT/g; s/电信CN2>电信/CN2 GT/g; s/电信163/CN2 GT/g; s/电信CN2/CN2 GT/g')
+            while [[ "$cn_path" == *"CN2 GT>CN2 GT"* ]]; do cn_path="${cn_path//CN2 GT>CN2 GT/CN2 GT}"; done
+        elif [ "$has_cn2_in_path" -eq 1 ] && [ "$has_163_in_path" -eq 0 ]; then
+            cn_path=$(echo "$cn_path" | sed 's/电信CN2/CN2 GIA/g')
+            while [[ "$cn_path" == *"CN2 GIA>CN2 GIA"* ]]; do cn_path="${cn_path//CN2 GIA>CN2 GIA/CN2 GIA}"; done
+        fi
 
         [ -n "$cn_path" ] && result="$cn_path" || result="未识别"
     # 中国其他
