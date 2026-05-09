@@ -5,6 +5,9 @@ on:
     - cron: '0 2 * * *'  # 每天凌晨2点运行
   workflow_dispatch:      # 支持手动触发
 
+permissions:
+  contents: write   # 允许 workflow push commit
+
 jobs:
   sync:
     runs-on: ubuntu-latest
@@ -14,16 +17,17 @@ jobs:
 
       - name: Sync Nexttrace
         run: |
-          LATEST=$(curl -sL "https://api.github.com/repos/sjlleo/nexttrace/releases/latest" | grep '"tag_name"' | cut -d'"' -f4)
+          # 原仓库 sjlleo/nexttrace 已改名为 nxtrace/NTrace-core
+          LATEST=$(curl -sL "https://api.github.com/repos/nxtrace/NTrace-core/releases/latest" | grep '"tag_name"' | cut -d'"' -f4)
           CURRENT=$(cat Nexttrace/version.txt 2>/dev/null || echo "none")
           echo "Nexttrace: current=$CURRENT latest=$LATEST"
           if [ "$LATEST" != "$CURRENT" ]; then
-            BASE="https://github.com/sjlleo/nexttrace/releases/download/${LATEST}"
-            curl -sL -o Nexttrace/nexttrace_linux_amd64 "${BASE}/nexttrace_linux_amd64"
-            curl -sL -o Nexttrace/nexttrace_linux_386   "${BASE}/nexttrace_linux_386"
-            curl -sL -o Nexttrace/nexttrace_linux_arm64 "${BASE}/nexttrace_linux_arm64"
-            curl -sL -o Nexttrace/nexttrace_linux_armv7 "${BASE}/nexttrace_linux_armv7"
-            curl -sL -o Nexttrace/nexttrace_linux_mips  "${BASE}/nexttrace_linux_mips"
+            BASE="https://github.com/nxtrace/NTrace-core/releases/download/${LATEST}"
+            # --fail 让 404 直接退出，避免把 HTML 错误页写成二进制
+            curl -sSL --fail -o Nexttrace/nexttrace_linux_amd64 "${BASE}/nexttrace_linux_amd64"
+            curl -sSL --fail -o Nexttrace/nexttrace_linux_386   "${BASE}/nexttrace_linux_386"
+            curl -sSL --fail -o Nexttrace/nexttrace_linux_arm64 "${BASE}/nexttrace_linux_arm64"
+            curl -sSL --fail -o Nexttrace/nexttrace_linux_armv7 "${BASE}/nexttrace_linux_armv7"
             echo "${LATEST}" > Nexttrace/version.txt
             echo "NEXTTRACE_UPDATED=true" >> $GITHUB_ENV
             echo "NEXTTRACE_VER=${LATEST}" >> $GITHUB_ENV
@@ -39,14 +43,10 @@ jobs:
           echo "curl-impersonate: current=$CURRENT latest=$LATEST"
           if [ "$LATEST" != "$CURRENT" ]; then
             BASE="https://github.com/lwthiker/curl-impersonate/releases/download/${LATEST}"
-            # 下载各平台压缩包并解压出 curl-impersonate-chrome 二进制
-            curl -sL -o /tmp/ci_x86_64.tar.gz  "${BASE}/curl-impersonate-${LATEST}.x86_64-linux-gnu.tar.gz"
-            curl -sL -o /tmp/ci_aarch64.tar.gz "${BASE}/curl-impersonate-${LATEST}.aarch64-linux-gnu.tar.gz"
-            curl -sL -o /tmp/ci_arm.tar.gz     "${BASE}/curl-impersonate-${LATEST}.arm-linux-gnueabihf.tar.gz"
-            tar -xzf /tmp/ci_x86_64.tar.gz  -C /tmp/ci_x86_64  --wildcards "curl-impersonate-chrome" 2>/dev/null || (mkdir -p /tmp/ci_x86_64  && tar -xzf /tmp/ci_x86_64.tar.gz  -C /tmp/ci_x86_64)
-            tar -xzf /tmp/ci_aarch64.tar.gz -C /tmp/ci_aarch64 --wildcards "curl-impersonate-chrome" 2>/dev/null || (mkdir -p /tmp/ci_aarch64 && tar -xzf /tmp/ci_aarch64.tar.gz -C /tmp/ci_aarch64)
-            tar -xzf /tmp/ci_arm.tar.gz     -C /tmp/ci_arm     --wildcards "curl-impersonate-chrome" 2>/dev/null || (mkdir -p /tmp/ci_arm     && tar -xzf /tmp/ci_arm.tar.gz     -C /tmp/ci_arm)
             mkdir -p /tmp/ci_x86_64 /tmp/ci_aarch64 /tmp/ci_arm
+            curl -sSL --fail -o /tmp/ci_x86_64.tar.gz  "${BASE}/curl-impersonate-${LATEST}.x86_64-linux-gnu.tar.gz"
+            curl -sSL --fail -o /tmp/ci_aarch64.tar.gz "${BASE}/curl-impersonate-${LATEST}.aarch64-linux-gnu.tar.gz"
+            curl -sSL --fail -o /tmp/ci_arm.tar.gz     "${BASE}/curl-impersonate-${LATEST}.arm-linux-gnueabihf.tar.gz"
             tar -xzf /tmp/ci_x86_64.tar.gz  -C /tmp/ci_x86_64
             tar -xzf /tmp/ci_aarch64.tar.gz -C /tmp/ci_aarch64
             tar -xzf /tmp/ci_arm.tar.gz     -C /tmp/ci_arm
