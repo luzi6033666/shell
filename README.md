@@ -12,6 +12,7 @@
 | `AutoTrace.sh` | 三网回程路由测试 + IP 信息/欺诈评分 | `bash AutoTrace.sh` |
 | `ssr.sh` | Shadowsocks / SSR 服务端一键安装卸载 | `bash ssr.sh install` |
 | `ssr-sync.sh` | 把一台机器的 SSR 整体迁移到另一台 | `bash ssr-sync.sh` |
+| `RegionRestrictionCheck.sh` | 流媒体/游戏区域解锁检测（上游补丁版） | `bash RegionRestrictionCheck.sh` |
 
 ---
 
@@ -139,6 +140,29 @@ bash ssr.sh uninstall    # 交互式选择要卸载的版本
 - 源机与目标机架构相同（如都是 x86_64），建议 Debian/Ubuntu 主版本一致
 - 目标机需已安装 `python3`，否则 SSR 无法运行
 - 本机需要 `ssh`、`scp`、`tar`、`sed`、`awk`、`grep`
+
+---
+
+## 5. RegionRestrictionCheck.sh — 流媒体解锁检测（补丁版）
+
+上游 [1-stream/RegionRestrictionCheck](https://github.com/1-stream/RegionRestrictionCheck)，本仓库是打过补丁的版本。
+
+```bash
+bash <(curl -L -s https://raw.githubusercontent.com/luzi6033666/shell/main/RegionRestrictionCheck.sh)
+```
+
+交互式选择检测区域（回车 = 全区域），会输出 Netflix / Disney+ / YouTube Premium / Prime Video / Spotify / 游戏平台等的解锁情况与地区。
+
+**相对上游修了什么（2026-10-29，Debian 13 + jq 1.7 上复现并验证）**
+
+1. **不再喷 `jq: parse error: Invalid numeric literal at line 1, column 10`**
+   根因：DAZN 等接口对机房 IP 直接返回 CloudFront 403 的 **HTML 页面**，脚本却把它直接喂给 `jq`。
+   修法：加了一层 `jq` 包装函数，解析前先用 `jq .` 校验，非合法 JSON 就静默返回空，交给各检测函数自己的 `Unsupported / Failed` 分支。
+2. **DAZN 输出更有意义**：识别到 CDN 拦截页时输出 `No  (Blocked by CDN)`，而不是原来被 HTML 冲掉后的 `Unsupport`。
+3. **Amazon Prime Video 地区码不再乱码**：原来用 `grep '"currentTerritory":' | cut` 提取，某些 IP 下会匹配到页面里的 JS 片段，输出成 `},Program:{dataType:...`。现在只匹配 `"currentTerritory":"XX"` 的两位大写地区码。
+4. 调试开关：`RRC_DEBUG=1 bash RegionRestrictionCheck.sh` 会打印被跳过的非 JSON 响应，方便定位下一个失效的接口。
+
+> 注意：流媒体接口会频繁变动，某个平台显示 `Unsupported / Failed (Network Connection)` 通常是该接口对机房 IP 风控或已改版，不是脚本本身的问题；上游更新后需要重新打补丁。
 
 ---
 
